@@ -1,2 +1,3 @@
 ﻿signing.keystore
 *.keystore
+dist/

@@ -29,50 +29,33 @@ function setBadge(tabName, count) {
   }
 }
 
-// ── 確認 (cc_confirms) ──────────────────────────────────────
-async function loadConfirms() {
-  const el = document.getElementById("confirmsList");
+// ── 每日早報 (daily_briefing) ────────────────────────────────
+async function loadBriefing() {
+  const el = document.getElementById("briefingCard");
   const { data, error } = await sb
-    .from("cc_confirms")
+    .from("daily_briefing")
     .select("*")
-    .eq("status", "pending")
-    .order("created_at", { ascending: true });
+    .eq("id", 1)
+    .maybeSingle();
 
   if (error) {
     el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
-    setBadge("confirms", 0);
     return;
   }
 
-  setBadge("confirms", data.length);
-
-  if (!data.length) {
-    el.innerHTML = `<div class="empty">目前沒有需要確認的項目</div>`;
+  if (!data || !data.content) {
+    el.innerHTML = `<div class="empty">今天的早報還沒產生</div>`;
     return;
   }
 
-  el.innerHTML = data.map((c) => `
-    <div class="card confirm" data-id="${c.id}">
+  el.innerHTML = `
+    <div class="card">
       <div class="content">
-        <div class="title">[${escapeHtml(c.project_name)}] ${escapeHtml(c.message)}</div>
-        <div class="meta">${fmtTime(c.created_at)}</div>
+        <div class="title" style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>
+        <div class="meta">更新時間：${fmtTime(data.updated_at)}</div>
       </div>
-      <button class="resolve-btn">已確認</button>
     </div>
-  `).join("");
-
-  el.querySelectorAll(".resolve-btn").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const card = e.target.closest(".card");
-      const id = card.dataset.id;
-      btn.disabled = true;
-      await sb.from("cc_confirms").update({
-        status: "resolved",
-        resolved_at: new Date().toISOString(),
-      }).eq("id", id);
-      loadConfirms();
-    });
-  });
+  `;
 }
 
 // ── 自選股報價 (stock_watchlist / stock_quotes) ─────────────
@@ -87,43 +70,162 @@ function fmtSigned(n, digits = 2) {
   return (v >= 0 ? "+" : "") + v.toFixed(digits);
 }
 
+const FIXED_SYMBOLS = ["TSM", "^SOX", "^IXIC", "YM=F", "TXFN1", "^TWII"];
+const MAX_CUSTOM = 4;
+
+function quoteCardCls(q) {
+  let cardCls = "quote-card";
+  let pctCls = "";
+  if (q.status === "limit_up") cardCls += " limit-up";
+  else if (q.status === "limit_down") cardCls += " limit-down";
+  else if (q.status === "up") pctCls = "pct-up";
+  else if (q.status === "down") pctCls = "pct-down";
+  return { cardCls, pctCls };
+}
+
 async function loadQuotes() {
-  const el = document.getElementById("quotesList");
-  const { data: quotes, error } = await sb
-    .from("stock_quotes")
-    .select("*")
-    .order("sort_order", { ascending: true });
+  const fixedEl = document.getElementById("fixedQuotesList");
+  const customEl = document.getElementById("customQuotesList");
 
-  if (error) {
-    el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
+  const [{ data: quotes, error: qError }, { data: watchlist, error: wError }] = await Promise.all([
+    sb.from("stock_quotes").select("*").order("sort_order", { ascending: true }),
+    sb.from("stock_watchlist").select("*").order("sort_order", { ascending: true }),
+  ]);
+
+  if (qError) {
+    fixedEl.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(qError.message)}</div>`;
+    customEl.innerHTML = "";
     return;
   }
 
-  if (!quotes.length) {
-    el.innerHTML = `<div class="empty">尚未取得報價，請確認秘書工具是否在執行</div>`;
-    return;
-  }
+  const quoteMap = {};
+  quotes.forEach((q) => { quoteMap[q.symbol] = q; });
 
-  el.innerHTML = quotes.map((q) => {
-    let cardCls = "quote-card";
-    let pctCls = "";
-    if (q.status === "limit_up") cardCls += " limit-up";
-    else if (q.status === "limit_down") cardCls += " limit-down";
-    else if (q.status === "up") pctCls = "pct-up";
-    else if (q.status === "down") pctCls = "pct-down";
-
-    return `
-    <div class="${cardCls}">
-      <div class="content">
-        <div class="title">${escapeHtml(q.name)}（${escapeHtml(q.symbol)}）</div>
-        <div class="meta">
-          ${fmtNum(q.price)}
-          <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>
+  const fixedQuotes = quotes.filter((q) => FIXED_SYMBOLS.includes(q.symbol));
+  if (!fixedQuotes.length) {
+    fixedEl.innerHTML = `<div class="empty">尚未取得報價，請確認秘書工具是否在執行</div>`;
+  } else {
+    fixedEl.innerHTML = fixedQuotes.map((q) => {
+      const { cardCls, pctCls } = quoteCardCls(q);
+      return `
+      <div class="${cardCls}">
+        <div class="content">
+          <div class="title">${escapeHtml(q.name)}（${escapeHtml(q.symbol)}）</div>
+          <div class="meta">
+            ${fmtNum(q.price)}
+            <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>
+          </div>
         </div>
+      </div>
+    `;
+    }).join("");
+  }
+
+  // ── 自選股 ──
+  if (wError) {
+    customEl.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(wError.message)}</div>`;
+  } else if (!watchlist.length) {
+    customEl.innerHTML = `<div class="empty">尚未新增自選股</div>`;
+  } else {
+    customEl.innerHTML = watchlist.map((w) => {
+      const q = quoteMap[w.symbol];
+      const { cardCls, pctCls } = q ? quoteCardCls(q) : { cardCls: "quote-card", pctCls: "" };
+      const priceHtml = q
+        ? `${fmtNum(q.price)} <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>`
+        : "尚無報價";
+
+      return `
+      <div class="${cardCls}" data-id="${w.id}" data-symbol="${escapeHtml(w.symbol)}">
+        <div class="content">
+          <div class="title">${escapeHtml(w.name)}（${escapeHtml(w.symbol)}）</div>
+          <div class="meta">${priceHtml}</div>
+          <div class="threshold-row">
+            <label>漲幅通知%
+              <input type="number" step="0.1" min="0" class="pct-up-input" value="${w.alert_pct_up ?? ""}">
+            </label>
+            <label>跌幅通知%
+              <input type="number" step="0.1" min="0" class="pct-down-input" value="${w.alert_pct_down ?? ""}">
+            </label>
+          </div>
+        </div>
+        <button class="del-btn">刪除</button>
+      </div>
+    `;
+    }).join("");
+
+    customEl.querySelectorAll(".pct-up-input, .pct-down-input").forEach((input) => {
+      input.addEventListener("change", async (e) => {
+        const card = e.target.closest("[data-id]");
+        const id = card.dataset.id;
+        const field = e.target.classList.contains("pct-up-input") ? "alert_pct_up" : "alert_pct_down";
+        const val = e.target.value === "" ? null : parseFloat(e.target.value);
+        await sb.from("stock_watchlist").update({ [field]: val }).eq("id", id);
+      });
+    });
+
+    customEl.querySelectorAll(".del-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const card = e.target.closest("[data-id]");
+        const id = card.dataset.id;
+        const symbol = card.dataset.symbol;
+        btn.disabled = true;
+        await sb.from("stock_watchlist").delete().eq("id", id);
+        await sb.from("stock_quotes").delete().eq("symbol", symbol);
+        loadQuotes();
+      });
+    });
+  }
+
+  const form = document.getElementById("watchlistForm");
+  form.style.display = watchlist && watchlist.length >= MAX_CUSTOM ? "none" : "flex";
+}
+
+document.getElementById("watchlistForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const symbol = document.getElementById("wlSymbol").value.trim();
+  const name = document.getElementById("wlName").value.trim();
+  const pctUp = document.getElementById("wlPctUp").value;
+  const pctDown = document.getElementById("wlPctDown").value;
+  if (!symbol || !name) return;
+
+  const { data: existing } = await sb.from("stock_watchlist").select("id");
+  if (existing && existing.length >= MAX_CUSTOM) return;
+
+  await sb.from("stock_watchlist").insert({
+    symbol,
+    name,
+    source: "yahoo",
+    alert_pct_up: pctUp === "" ? null : parseFloat(pctUp),
+    alert_pct_down: pctDown === "" ? null : parseFloat(pctDown),
+    sort_order: 7 + (existing ? existing.length : 0),
+  });
+
+  e.target.reset();
+  loadQuotes();
+});
+
+// ── 大盤趨勢研判 (market_outlook) ────────────────────────────
+async function loadOutlook() {
+  const el = document.getElementById("outlookCard");
+  const { data, error } = await sb
+    .from("market_outlook")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (error || !data || !data.summary) {
+    el.innerHTML = `<div class="empty">尚無研判資料</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="content">
+        <div class="title">${escapeHtml(data.summary)}</div>
+        <div class="meta">${fmtTime(data.updated_at)}</div>
       </div>
     </div>
   `;
-  }).join("");
 }
 
 // ── 股票通知 (stock_alerts) ─────────────────────────────────
@@ -301,28 +403,18 @@ async function loadSchedule() {
 async function loadSettings() {
   const { data, error } = await sb
     .from("secretary_settings")
-    .select("auto_approve_level, reminder_interval_min")
+    .select("reminder_interval_min,briefing_topics,briefing_time")
     .eq("id", 1)
     .single();
 
   if (error) return;
 
-  const levelRadio = document.querySelector(`input[name="approveLevel"][value="${data.auto_approve_level}"]`);
-  if (levelRadio) levelRadio.checked = true;
-
   const reminderRadio = document.querySelector(`input[name="reminderInterval"][value="${data.reminder_interval_min}"]`);
   if (reminderRadio) reminderRadio.checked = true;
-}
 
-document.querySelectorAll('input[name="approveLevel"]').forEach((radio) => {
-  radio.addEventListener("change", async (e) => {
-    const level = parseInt(e.target.value, 10);
-    await sb.from("secretary_settings").update({
-      auto_approve_level: level,
-      updated_at: new Date().toISOString(),
-    }).eq("id", 1);
-  });
-});
+  document.getElementById("briefingTime").value = data.briefing_time || "08:00";
+  document.getElementById("briefingTopics").value = data.briefing_topics || "";
+}
 
 document.querySelectorAll('input[name="reminderInterval"]').forEach((radio) => {
   radio.addEventListener("change", async (e) => {
@@ -334,10 +426,24 @@ document.querySelectorAll('input[name="reminderInterval"]').forEach((radio) => {
   });
 });
 
+document.getElementById("briefingTime").addEventListener("change", async (e) => {
+  await sb.from("secretary_settings").update({
+    briefing_time: e.target.value,
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+});
+
+document.getElementById("briefingTopics").addEventListener("change", async (e) => {
+  await sb.from("secretary_settings").update({
+    briefing_topics: e.target.value,
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+});
+
 // ── Tabs ────────────────────────────────────────────────────
 const loaders = {
-  confirms: loadConfirms,
-  stocks: () => { loadQuotes(); loadStocks(); },
+  briefing: loadBriefing,
+  stocks: () => { loadQuotes(); loadOutlook(); loadStocks(); },
   todos: loadTodos,
   notes: loadNotes,
   schedule: loadSchedule,
@@ -363,7 +469,7 @@ function refreshAll() {
 }
 
 // ── Init ────────────────────────────────────────────────────
-switchTab("confirms");
+switchTab("briefing");
 refreshAll();
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
 

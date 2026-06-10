@@ -18,18 +18,28 @@
 </header>
 
 <main id="main">
-  <section id="tab-confirms" class="tab">
-    <h2>需要確認</h2>
-    <p class="hint">
-      這裡是 Claude Code 的通知記錄，無法直接從這裡幫終端機按下確認。
-      若希望 Claude 在你不在電腦前時自動繼續，請到「設定」分頁調整委派秘書授權等級。
-    </p>
-    <div id="confirmsList" class="list"></div>
+  <section id="tab-briefing" class="tab">
+    <h2>每日早報</h2>
+    <div id="briefingCard" class="list"></div>
   </section>
 
   <section id="tab-stocks" class="tab">
-    <h2>自選股報價</h2>
-    <div id="quotesList" class="list"></div>
+    <h2>固定指數</h2>
+    <div id="fixedQuotesList" class="list"></div>
+
+    <h2>大盤趨勢研判</h2>
+    <div id="outlookCard" class="list"></div>
+
+    <h2>自選股（最多 4 檔）</h2>
+    <div id="customQuotesList" class="list"></div>
+
+    <form id="watchlistForm" class="add-form watchlist-form">
+      <input id="wlSymbol" type="text" placeholder="代號，例如 2330.TW" autocomplete="off">
+      <input id="wlName" type="text" placeholder="名稱" autocomplete="off">
+      <input id="wlPctUp" type="number" step="0.1" min="0" placeholder="漲幅通知%">
+      <input id="wlPctDown" type="number" step="0.1" min="0" placeholder="跌幅通知%">
+      <button type="submit">新增</button>
+    </form>
 
     <h2>股票通知</h2>
     <div id="stocksList" class="list"></div>
@@ -59,31 +69,6 @@
   </section>
 
   <section id="tab-settings" class="tab">
-    <h2>委派秘書授權</h2>
-    <div class="list">
-      <label class="card radio-row">
-        <input type="radio" name="approveLevel" value="0">
-        <div class="content">
-          <div class="title">取消授權</div>
-          <div class="meta">所有確認一律詢問</div>
-        </div>
-      </label>
-      <label class="card radio-row">
-        <input type="radio" name="approveLevel" value="1">
-        <div class="content">
-          <div class="title">一般操作確認</div>
-          <div class="meta">一般操作自動同意，危險操作仍會詢問</div>
-        </div>
-      </label>
-      <label class="card radio-row">
-        <input type="radio" name="approveLevel" value="2">
-        <div class="content">
-          <div class="title">最高層級授權</div>
-          <div class="meta">所有需要確認的訊息都自動同意</div>
-        </div>
-      </label>
-    </div>
-
     <h2>未確認重複提醒</h2>
     <div class="list">
       <label class="card radio-row">
@@ -112,11 +97,27 @@
         </div>
       </label>
     </div>
+
+    <h2>每日早報設定</h2>
+    <div class="list">
+      <div class="card">
+        <div class="content">
+          <div class="title">匯報時間</div>
+          <input id="briefingTime" type="time">
+        </div>
+      </div>
+      <div class="card">
+        <div class="content">
+          <div class="title">自訂匯報內容</div>
+          <textarea id="briefingTopics" rows="4" placeholder="例如：提醒我留意天氣、幫我看一下今天有沒有重要新聞…"></textarea>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
 <nav class="tabbar">
-  <button class="tab-btn active" data-tab="confirms">確認</button>
+  <button class="tab-btn active" data-tab="briefing">早報</button>
   <button class="tab-btn" data-tab="stocks">股票</button>
   <button class="tab-btn" data-tab="todos">待辦</button>
   <button class="tab-btn" data-tab="notes">筆記</button>
