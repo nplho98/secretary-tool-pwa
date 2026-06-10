@@ -69,6 +69,7 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .stock-quad h2 {
@@ -78,6 +79,10 @@ main {
 
 .stock-quad .list {
   gap: 6px;
+}
+
+.stock-quad .list + .list {
+  margin-top: 6px;
 }
 
 .tag-profit, .tag-loss {
