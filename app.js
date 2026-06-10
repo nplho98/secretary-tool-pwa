@@ -70,7 +70,7 @@ function fmtSigned(n, digits = 2) {
   return (v >= 0 ? "+" : "") + v.toFixed(digits);
 }
 
-const FIXED_SYMBOLS = ["TSM", "^SOX", "^IXIC", "YM=F", "TXFN1", "^TWII"];
+const FIXED_SYMBOLS = ["2330.TW", "^SOX", "^IXIC", "YM=F", "TXFN1", "^TWII"];
 const MAX_CUSTOM = 6;
 
 function quoteCardCls(q) {

@@ -65,6 +65,10 @@ main {
   font-weight: 600;
 }
 
+#tab-stocks > .stock-quad {
+  margin-bottom: 12px;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
