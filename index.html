@@ -28,6 +28,14 @@
   </section>
 
   <section id="tab-stocks" class="tab">
+    <h2>自選股報價</h2>
+    <form id="stockForm" class="add-form">
+      <input id="stockSymbolInput" type="text" placeholder="代碼，如 2330 或 2330.TW" autocomplete="off">
+      <input id="stockNameInput" type="text" placeholder="名稱" autocomplete="off">
+      <button type="submit">新增</button>
+    </form>
+    <div id="quotesList" class="list"></div>
+
     <h2>股票通知</h2>
     <div id="stocksList" class="list"></div>
   </section>

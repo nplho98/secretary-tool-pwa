@@ -126,6 +126,57 @@ main {
 .card.alert .title { color: #ef6c00; }
 .card.confirm .title { color: #1565c0; }
 
+.quote-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.quote-card .title {
+  font-weight: 600;
+}
+
+.quote-card .meta {
+  font-size: 13px;
+  margin-top: 2px;
+  color: var(--text);
+}
+
+.quote-card.limit-up {
+  background: var(--danger);
+  color: #fff;
+}
+
+.quote-card.limit-down {
+  background: var(--accent);
+  color: #fff;
+}
+
+.quote-card.limit-up .meta,
+.quote-card.limit-down .meta {
+  color: #fff;
+}
+
+.pct-up { color: #e53935; }
+.pct-down { color: #2e7d32; }
+
+.quote-card .del-stock-btn {
+  flex-shrink: 0;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .empty {
   color: var(--muted);
   text-align: center;

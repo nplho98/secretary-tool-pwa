@@ -75,6 +75,90 @@ async function loadConfirms() {
   });
 }
 
+// ── 自選股報價 (stock_watchlist / stock_quotes) ─────────────
+function fmtNum(n, digits = 2) {
+  if (n === null || n === undefined) return "—";
+  return Number(n).toLocaleString("zh-TW", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function fmtSigned(n, digits = 2) {
+  if (n === null || n === undefined) return "—";
+  const v = Number(n);
+  return (v >= 0 ? "+" : "") + v.toFixed(digits);
+}
+
+async function loadQuotes() {
+  const el = document.getElementById("quotesList");
+  const [{ data: watchlist, error: e1 }, { data: quotes, error: e2 }] = await Promise.all([
+    sb.from("stock_watchlist").select("*").order("sort_order", { ascending: true }),
+    sb.from("stock_quotes").select("*"),
+  ]);
+
+  if (e1 || e2) {
+    el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml((e1 || e2).message)}</div>`;
+    return;
+  }
+
+  if (!watchlist.length) {
+    el.innerHTML = `<div class="empty">目前沒有自選股</div>`;
+    return;
+  }
+
+  const quoteMap = Object.fromEntries(quotes.map((q) => [q.symbol, q]));
+
+  el.innerHTML = watchlist.map((s) => {
+    const q = quoteMap[s.symbol] || {};
+    let cardCls = "quote-card";
+    let pctCls = "";
+    if (q.status === "limit_up") cardCls += " limit-up";
+    else if (q.status === "limit_down") cardCls += " limit-down";
+    else if (q.status === "up") pctCls = "pct-up";
+    else if (q.status === "down") pctCls = "pct-down";
+
+    const delBtn = s.fixed ? "" : `<button class="del-stock-btn" data-symbol="${escapeHtml(s.symbol)}">刪除</button>`;
+
+    return `
+    <div class="${cardCls}" data-symbol="${escapeHtml(s.symbol)}">
+      <div class="content">
+        <div class="title">${escapeHtml(s.name)}（${escapeHtml(s.symbol)}）</div>
+        <div class="meta">
+          ${fmtNum(q.price)}
+          <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>
+        </div>
+      </div>
+      ${delBtn}
+    </div>
+  `;
+  }).join("");
+
+  el.querySelectorAll(".del-stock-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const symbol = e.target.dataset.symbol;
+      if (!confirm(`確定移除 ${symbol}？`)) return;
+      btn.disabled = true;
+      await sb.from("stock_watchlist").delete().eq("symbol", symbol);
+      loadQuotes();
+    });
+  });
+}
+
+document.getElementById("stockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const symbolInput = document.getElementById("stockSymbolInput");
+  const nameInput = document.getElementById("stockNameInput");
+  let symbol = symbolInput.value.trim().toUpperCase();
+  const name = nameInput.value.trim();
+  if (!symbol || !name) return;
+
+  if (/^\d{4,5}$/.test(symbol)) symbol = symbol + ".TW";
+  const source = symbol.startsWith("TXF") ? "taifex" : "yahoo";
+
+  await sb.from("stock_watchlist").insert({ symbol, name, source, fixed: false, sort_order: 999 });
+  symbolInput.value = "";
+  nameInput.value = "";
+  loadQuotes();
+});
+
 // ── 股票通知 (stock_alerts) ─────────────────────────────────
 async function loadStocks() {
   const el = document.getElementById("stocksList");
@@ -286,7 +370,7 @@ document.querySelectorAll('input[name="reminderInterval"]').forEach((radio) => {
 // ── Tabs ────────────────────────────────────────────────────
 const loaders = {
   confirms: loadConfirms,
-  stocks: loadStocks,
+  stocks: () => { loadQuotes(); loadStocks(); },
   todos: loadTodos,
   notes: loadNotes,
   schedule: loadSchedule,
