@@ -20,6 +20,10 @@
 <main id="main">
   <section id="tab-confirms" class="tab">
     <h2>需要確認</h2>
+    <p class="hint">
+      這裡是 Claude Code 的通知記錄，無法直接從這裡幫終端機按下確認。
+      若希望 Claude 在你不在電腦前時自動繼續，請到「設定」分頁調整委派秘書授權等級。
+    </p>
     <div id="confirmsList" class="list"></div>
   </section>
 
@@ -73,6 +77,35 @@
         <div class="content">
           <div class="title">最高層級授權</div>
           <div class="meta">所有需要確認的訊息都自動同意</div>
+        </div>
+      </label>
+    </div>
+
+    <h2>未確認重複提醒</h2>
+    <div class="list">
+      <label class="card radio-row">
+        <input type="radio" name="reminderInterval" value="0">
+        <div class="content">
+          <div class="title">不重複提醒</div>
+          <div class="meta">只通知一次</div>
+        </div>
+      </label>
+      <label class="card radio-row">
+        <input type="radio" name="reminderInterval" value="5">
+        <div class="content">
+          <div class="title">每 5 分鐘</div>
+        </div>
+      </label>
+      <label class="card radio-row">
+        <input type="radio" name="reminderInterval" value="10">
+        <div class="content">
+          <div class="title">每 10 分鐘</div>
+        </div>
+      </label>
+      <label class="card radio-row">
+        <input type="radio" name="reminderInterval" value="30">
+        <div class="content">
+          <div class="title">每 30 分鐘</div>
         </div>
       </label>
     </div>

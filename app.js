@@ -250,14 +250,17 @@ async function loadSchedule() {
 async function loadSettings() {
   const { data, error } = await sb
     .from("secretary_settings")
-    .select("auto_approve_level")
+    .select("auto_approve_level, reminder_interval_min")
     .eq("id", 1)
     .single();
 
   if (error) return;
 
-  const radio = document.querySelector(`input[name="approveLevel"][value="${data.auto_approve_level}"]`);
-  if (radio) radio.checked = true;
+  const levelRadio = document.querySelector(`input[name="approveLevel"][value="${data.auto_approve_level}"]`);
+  if (levelRadio) levelRadio.checked = true;
+
+  const reminderRadio = document.querySelector(`input[name="reminderInterval"][value="${data.reminder_interval_min}"]`);
+  if (reminderRadio) reminderRadio.checked = true;
 }
 
 document.querySelectorAll('input[name="approveLevel"]').forEach((radio) => {
@@ -265,6 +268,16 @@ document.querySelectorAll('input[name="approveLevel"]').forEach((radio) => {
     const level = parseInt(e.target.value, 10);
     await sb.from("secretary_settings").update({
       auto_approve_level: level,
+      updated_at: new Date().toISOString(),
+    }).eq("id", 1);
+  });
+});
+
+document.querySelectorAll('input[name="reminderInterval"]').forEach((radio) => {
+  radio.addEventListener("change", async (e) => {
+    const minutes = parseInt(e.target.value, 10);
+    await sb.from("secretary_settings").update({
+      reminder_interval_min: minutes,
       updated_at: new Date().toISOString(),
     }).eq("id", 1);
   });
