@@ -1,11 +1,14 @@
 :root {
-  color-scheme: dark;
-  --bg: #121212;
-  --card: #1e1e1e;
-  --accent: #4caf50;
-  --text: #e8e8e8;
-  --muted: #9aa0a6;
-  --danger: #ef5350;
+  color-scheme: light;
+  --bg: #eef1f5;
+  --card: #ffffff;
+  --accent: #2e7d32;
+  --accent-dark: #1b5e20;
+  --text: #20242a;
+  --muted: #78808c;
+  --danger: #e53935;
+  --border: #e3e6ec;
+  --shadow: 0 1px 3px rgba(20, 30, 50, 0.08), 0 1px 2px rgba(20, 30, 50, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -24,10 +27,12 @@ html, body {
   justify-content: space-between;
   padding: 14px 16px calc(env(safe-area-inset-top) + 0px);
   padding-top: calc(14px + env(safe-area-inset-top));
-  background: #1b5e20;
+  background: var(--accent-dark);
+  color: #fff;
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.15);
 }
 
 .topbar h1 {
@@ -38,7 +43,7 @@ html, body {
 .icon-btn {
   background: none;
   border: none;
-  color: var(--text);
+  color: #fff;
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -57,22 +62,25 @@ main {
   font-size: 16px;
   color: var(--muted);
   margin: 4px 0 12px;
+  font-weight: 600;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .card {
   background: var(--card);
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   padding: 12px 14px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  box-shadow: var(--shadow);
 }
 
 .card .content {
@@ -101,16 +109,21 @@ main {
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
 }
 
-.card.alert .title { color: #ffb74d; }
-.card.confirm .title { color: #64b5f6; }
+.card.alert .title { color: #ef6c00; }
+.card.confirm .title { color: #1565c0; }
 
 .empty {
   color: var(--muted);
   text-align: center;
   padding: 24px 0;
   font-size: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 .add-form {
@@ -122,11 +135,12 @@ main {
 .add-form input {
   flex: 1;
   background: var(--card);
-  border: 1px solid #333;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--text);
   font-size: 14px;
+  box-shadow: var(--shadow);
 }
 
 .add-form button {
@@ -137,6 +151,7 @@ main {
   padding: 10px 16px;
   font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
 }
 
 .todo-row {
@@ -161,6 +176,7 @@ main {
   height: 20px;
   flex-shrink: 0;
   margin-right: 4px;
+  accent-color: var(--accent);
 }
 
 .tabbar {
@@ -169,8 +185,9 @@ main {
   left: 0;
   right: 0;
   display: flex;
-  background: #1a1a1a;
-  border-top: 1px solid #2a2a2a;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 6px rgba(20, 30, 50, 0.06);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -178,14 +195,16 @@ main {
   flex: 1;
   background: none;
   border: none;
+  border-top: 3px solid transparent;
   color: var(--muted);
-  padding: 10px 0;
+  padding: 10px 0 7px;
   font-size: 13px;
   cursor: pointer;
 }
 
 .tab-btn.active {
   color: var(--accent);
+  border-top-color: var(--accent);
   font-weight: 600;
 }
 
