@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b5e20">
+<title>秘書工具</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>秘書工具</h1>
+  <button id="refreshBtn" class="icon-btn" title="重新整理">⟳</button>
+</header>
+
+<main id="main">
+  <section id="tab-confirms" class="tab">
+    <h2>需要確認</h2>
+    <div id="confirmsList" class="list"></div>
+  </section>
+
+  <section id="tab-stocks" class="tab">
+    <h2>股票通知</h2>
+    <div id="stocksList" class="list"></div>
+  </section>
+
+  <section id="tab-todos" class="tab">
+    <h2>待辦事項</h2>
+    <form id="todoForm" class="add-form">
+      <input id="todoInput" type="text" placeholder="新增待辦事項…" autocomplete="off">
+      <button type="submit">新增</button>
+    </form>
+    <div id="todosList" class="list"></div>
+  </section>
+
+  <section id="tab-notes" class="tab">
+    <h2>筆記</h2>
+    <form id="noteForm" class="add-form">
+      <input id="noteInput" type="text" placeholder="快速記錄…" autocomplete="off">
+      <button type="submit">新增</button>
+    </form>
+    <div id="notesList" class="list"></div>
+  </section>
+
+  <section id="tab-schedule" class="tab">
+    <h2>行程</h2>
+    <div id="scheduleList" class="list"></div>
+  </section>
+
+  <section id="tab-settings" class="tab">
+    <h2>委派秘書授權</h2>
+    <div class="list">
+      <label class="card radio-row">
+        <input type="radio" name="approveLevel" value="0">
+        <div class="content">
+          <div class="title">取消授權</div>
+          <div class="meta">所有確認一律詢問</div>
+        </div>
+      </label>
+      <label class="card radio-row">
+        <input type="radio" name="approveLevel" value="1">
+        <div class="content">
+          <div class="title">一般操作確認</div>
+          <div class="meta">一般操作自動同意，危險操作仍會詢問</div>
+        </div>
+      </label>
+      <label class="card radio-row">
+        <input type="radio" name="approveLevel" value="2">
+        <div class="content">
+          <div class="title">最高層級授權</div>
+          <div class="meta">所有需要確認的訊息都自動同意</div>
+        </div>
+      </label>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="confirms">確認</button>
+  <button class="tab-btn" data-tab="stocks">股票</button>
+  <button class="tab-btn" data-tab="todos">待辦</button>
+  <button class="tab-btn" data-tab="notes">筆記</button>
+  <button class="tab-btn" data-tab="schedule">行程</button>
+  <button class="tab-btn" data-tab="settings">設定</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
