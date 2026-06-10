@@ -1,0 +1,40 @@
+{
+  "packageId": "io.github.nplho98.secretarytool",
+  "host": "nplho98.github.io",
+  "name": "秘書工具",
+  "launcherName": "秘書工具",
+  "display": "standalone",
+  "splashScreenFadeOutDuration": 300,
+  "themeColor": "#1b5e20",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#121212",
+  "enableNotifications": false,
+  "startUrl": "/secretary-tool-pwa/",
+  "iconUrl": "https://nplho98.github.io/secretary-tool-pwa/icons/icon-512.png",
+  "maskableIconUrl": "https://nplho98.github.io/secretary-tool-pwa/icons/icon-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://nplho98.github.io/secretary-tool-pwa/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://nplho98.github.io/secretary-tool-pwa/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "signingKey": {
+    "path": "./signing.keystore",
+    "alias": "my-key-alias"
+  }
+}
