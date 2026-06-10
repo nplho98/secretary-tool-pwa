@@ -166,17 +166,6 @@ main {
 .pct-up { color: #e53935; }
 .pct-down { color: #2e7d32; }
 
-.quote-card .del-stock-btn {
-  flex-shrink: 0;
-  background: var(--danger);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
 .empty {
   color: var(--muted);
   text-align: center;
