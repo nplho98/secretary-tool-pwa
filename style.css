@@ -65,6 +65,34 @@ main {
   font-weight: 600;
 }
 
+.stock-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stock-quad h2 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.stock-quad .list {
+  gap: 6px;
+}
+
+.tag-profit, .tag-loss {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.tag-profit { background: var(--danger); }
+.tag-loss { background: var(--accent); }
+
 .hint {
   font-size: 12px;
   color: var(--muted);

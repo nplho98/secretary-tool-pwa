@@ -19,30 +19,39 @@
 
 <main id="main">
   <section id="tab-briefing" class="tab">
-    <h2>每日早報</h2>
+    <h2>每日晨報</h2>
     <div id="briefingCard" class="list"></div>
   </section>
 
   <section id="tab-stocks" class="tab">
-    <h2>固定指數</h2>
-    <div id="fixedQuotesList" class="list"></div>
+    <div class="stock-grid">
+      <div class="stock-quad">
+        <h2>固定指數</h2>
+        <div id="fixedQuotesList" class="list"></div>
+      </div>
 
-    <h2>大盤趨勢研判</h2>
-    <div id="outlookCard" class="list"></div>
+      <div class="stock-quad">
+        <h2>自選股（最多 6 檔）</h2>
+        <div id="customQuotesList" class="list"></div>
+        <form id="watchlistForm" class="add-form watchlist-form">
+          <input id="wlSymbol" type="text" placeholder="代號，例如 2330.TW" autocomplete="off">
+          <input id="wlName" type="text" placeholder="名稱" autocomplete="off">
+          <input id="wlPctUp" type="number" step="0.1" min="0" placeholder="漲幅通知%">
+          <input id="wlPctDown" type="number" step="0.1" min="0" placeholder="跌幅通知%">
+          <button type="submit">新增</button>
+        </form>
+      </div>
 
-    <h2>自選股（最多 4 檔）</h2>
-    <div id="customQuotesList" class="list"></div>
+      <div class="stock-quad">
+        <h2>大盤趨勢研判</h2>
+        <div id="outlookCard" class="list"></div>
+      </div>
 
-    <form id="watchlistForm" class="add-form watchlist-form">
-      <input id="wlSymbol" type="text" placeholder="代號，例如 2330.TW" autocomplete="off">
-      <input id="wlName" type="text" placeholder="名稱" autocomplete="off">
-      <input id="wlPctUp" type="number" step="0.1" min="0" placeholder="漲幅通知%">
-      <input id="wlPctDown" type="number" step="0.1" min="0" placeholder="跌幅通知%">
-      <button type="submit">新增</button>
-    </form>
-
-    <h2>股票通知</h2>
-    <div id="stocksList" class="list"></div>
+      <div class="stock-quad">
+        <h2>股票漲/跌達標通知</h2>
+        <div id="stocksList" class="list"></div>
+      </div>
+    </div>
   </section>
 
   <section id="tab-todos" class="tab">
@@ -98,7 +107,7 @@
       </label>
     </div>
 
-    <h2>每日早報設定</h2>
+    <h2>每日晨報設定</h2>
     <div class="list">
       <div class="card">
         <div class="content">
@@ -117,7 +126,7 @@
 </main>
 
 <nav class="tabbar">
-  <button class="tab-btn active" data-tab="briefing">早報</button>
+  <button class="tab-btn active" data-tab="briefing">晨報</button>
   <button class="tab-btn" data-tab="stocks">股票</button>
   <button class="tab-btn" data-tab="todos">待辦</button>
   <button class="tab-btn" data-tab="notes">筆記</button>

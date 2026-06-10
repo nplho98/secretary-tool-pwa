@@ -71,7 +71,7 @@ function fmtSigned(n, digits = 2) {
 }
 
 const FIXED_SYMBOLS = ["TSM", "^SOX", "^IXIC", "YM=F", "TXFN1", "^TWII"];
-const MAX_CUSTOM = 4;
+const MAX_CUSTOM = 6;
 
 function quoteCardCls(q) {
   let cardCls = "quote-card";
@@ -228,14 +228,13 @@ async function loadOutlook() {
   `;
 }
 
-// ── 股票通知 (stock_alerts) ─────────────────────────────────
+// ── 股票漲/跌達標通知 (stock_alerts) ─────────────────────────
 async function loadStocks() {
   const el = document.getElementById("stocksList");
-  const { data, error } = await sb
-    .from("stock_alerts")
-    .select("*")
-    .eq("acknowledged", false)
-    .order("created_at", { ascending: true });
+  const [{ data, error }, { data: quotes }] = await Promise.all([
+    sb.from("stock_alerts").select("*").eq("acknowledged", false).order("created_at", { ascending: true }),
+    sb.from("stock_quotes").select("symbol,name,price"),
+  ]);
 
   if (error) {
     el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
@@ -250,12 +249,20 @@ async function loadStocks() {
     return;
   }
 
+  const quoteMap = {};
+  (quotes || []).forEach((q) => { quoteMap[q.symbol] = q; });
+
   el.innerHTML = data.map((a) => {
-    const typeLabel = a.alert_type === "profit" ? "🎯 獲利" : "⚠ 停損";
+    const q = quoteMap[a.symbol];
+    const name = q ? q.name : a.symbol;
+    const price = a.current_price ?? q?.price;
+    const isProfit = a.alert_type === "profit";
+    const tagCls = isProfit ? "tag-profit" : "tag-loss";
+    const tagLabel = isProfit ? "獲利了結" : "停損";
     return `
     <div class="card alert" data-id="${a.id}">
       <div class="content">
-        <div class="title">${typeLabel}：${escapeHtml(a.symbol)}（目標 ${a.target_price}，現價 ${a.current_price ?? "-"}）</div>
+        <div class="title">${escapeHtml(name)}　${fmtNum(price)}　<span class="${tagCls}">${tagLabel}</span></div>
         <div class="meta">${escapeHtml(a.message ?? "")}</div>
         <div class="meta">${fmtTime(a.created_at)}</div>
       </div>
