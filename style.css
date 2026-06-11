@@ -273,7 +273,7 @@ main {
 }
 
 .cur-price.up { color: #e53935; }
-.cur-price.down { color: #2e7d32; }
+.cur-price.down { color: #00c853; }
 .cur-price.flat { color: var(--text); }
 
 .quote-card.limit-up .cur-price,
