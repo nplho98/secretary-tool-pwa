@@ -14,21 +14,6 @@ function escapeHtml(s) {
   }[c]));
 }
 
-function setBadge(tabName, count) {
-  const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
-  let badge = btn.querySelector(".badge");
-  if (count > 0) {
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "badge";
-      btn.appendChild(badge);
-    }
-    badge.textContent = count;
-  } else if (badge) {
-    badge.remove();
-  }
-}
-
 // ── 每日早報 (daily_briefing) ────────────────────────────────
 async function loadBriefing() {
   const el = document.getElementById("briefingCard");
@@ -129,39 +114,28 @@ async function loadQuotes() {
   } else {
     customEl.innerHTML = watchlist.map((w) => {
       const q = quoteMap[w.symbol];
-      const { cardCls, pctCls } = q ? quoteCardCls(q) : { cardCls: "quote-card", pctCls: "" };
-      const priceHtml = q
-        ? `${fmtNum(q.price)} <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>`
-        : "尚無報價";
+      let priceHtml = "尚無報價";
+      let cardCls = "quote-card";
+      if (q) {
+        const { cardCls: c } = quoteCardCls(q);
+        cardCls = c;
+        const prevClose = q.price - q.change;
+        const dirCls = (q.status === "limit_up" || q.status === "up") ? "up"
+          : (q.status === "limit_down" || q.status === "down") ? "down"
+          : "flat";
+        priceHtml = `${fmtNum(prevClose)} (<span class="cur-price ${dirCls}">${fmtNum(q.price)}</span>) ${fmtSigned(q.change)}`;
+      }
 
       return `
       <div class="${cardCls}" data-id="${w.id}" data-symbol="${escapeHtml(w.symbol)}">
         <div class="content">
           <div class="title">${escapeHtml(w.name)}（${escapeHtml(w.symbol)}）</div>
           <div class="meta">${priceHtml}</div>
-          <div class="threshold-row">
-            <label>漲幅通知%
-              <input type="number" step="0.1" min="0" class="pct-up-input" value="${w.alert_pct_up ?? ""}">
-            </label>
-            <label>跌幅通知%
-              <input type="number" step="0.1" min="0" class="pct-down-input" value="${w.alert_pct_down ?? ""}">
-            </label>
-          </div>
         </div>
         <button class="del-btn">刪除</button>
       </div>
     `;
     }).join("");
-
-    customEl.querySelectorAll(".pct-up-input, .pct-down-input").forEach((input) => {
-      input.addEventListener("change", async (e) => {
-        const card = e.target.closest("[data-id]");
-        const id = card.dataset.id;
-        const field = e.target.classList.contains("pct-up-input") ? "alert_pct_up" : "alert_pct_down";
-        const val = e.target.value === "" ? null : parseFloat(e.target.value);
-        await sb.from("stock_watchlist").update({ [field]: val }).eq("id", id);
-      });
-    });
 
     customEl.querySelectorAll(".del-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
@@ -184,8 +158,6 @@ document.getElementById("watchlistForm").addEventListener("submit", async (e) =>
   e.preventDefault();
   const symbol = document.getElementById("wlSymbol").value.trim();
   const name = document.getElementById("wlName").value.trim();
-  const pctUp = document.getElementById("wlPctUp").value;
-  const pctDown = document.getElementById("wlPctDown").value;
   if (!symbol || !name) return;
 
   const { data: existing } = await sb.from("stock_watchlist").select("id");
@@ -195,8 +167,6 @@ document.getElementById("watchlistForm").addEventListener("submit", async (e) =>
     symbol,
     name,
     source: "yahoo",
-    alert_pct_up: pctUp === "" ? null : parseFloat(pctUp),
-    alert_pct_down: pctDown === "" ? null : parseFloat(pctDown),
     sort_order: 7 + (existing ? existing.length : 0),
   });
 
@@ -226,60 +196,6 @@ async function loadOutlook() {
       </div>
     </div>
   `;
-}
-
-// ── 股票漲/跌達標通知 (stock_alerts) ─────────────────────────
-async function loadStocks() {
-  const el = document.getElementById("stocksList");
-  const [{ data, error }, { data: quotes }] = await Promise.all([
-    sb.from("stock_alerts").select("*").eq("acknowledged", false).order("created_at", { ascending: true }),
-    sb.from("stock_quotes").select("symbol,name,price"),
-  ]);
-
-  if (error) {
-    el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
-    setBadge("stocks", 0);
-    return;
-  }
-
-  setBadge("stocks", data.length);
-
-  if (!data.length) {
-    el.innerHTML = `<div class="empty">目前沒有股票通知</div>`;
-    return;
-  }
-
-  const quoteMap = {};
-  (quotes || []).forEach((q) => { quoteMap[q.symbol] = q; });
-
-  el.innerHTML = data.map((a) => {
-    const q = quoteMap[a.symbol];
-    const name = q ? q.name : a.symbol;
-    const price = a.current_price ?? q?.price;
-    const isProfit = a.alert_type === "profit";
-    const tagCls = isProfit ? "tag-profit" : "tag-loss";
-    const tagLabel = isProfit ? "獲利了結" : "停損";
-    return `
-    <div class="card alert" data-id="${a.id}">
-      <div class="content">
-        <div class="title">${escapeHtml(name)}　${fmtNum(price)}　<span class="${tagCls}">${tagLabel}</span></div>
-        <div class="meta">${escapeHtml(a.message ?? "")}</div>
-        <div class="meta">${fmtTime(a.created_at)}</div>
-      </div>
-      <button class="ack-btn">知道了</button>
-    </div>
-  `;
-  }).join("");
-
-  el.querySelectorAll(".ack-btn").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const card = e.target.closest(".card");
-      const id = card.dataset.id;
-      btn.disabled = true;
-      await sb.from("stock_alerts").update({ acknowledged: true }).eq("id", id);
-      loadStocks();
-    });
-  });
 }
 
 // ── 待辦事項 (todos) ────────────────────────────────────────
@@ -470,7 +386,7 @@ document.getElementById("instantBriefingBtn").addEventListener("click", async (e
 // ── Tabs ────────────────────────────────────────────────────
 const loaders = {
   briefing: loadBriefing,
-  stocks: () => { loadQuotes(); loadOutlook(); loadStocks(); },
+  stocks: () => { loadQuotes(); loadOutlook(); },
   todos: loadTodos,
   notes: loadNotes,
   schedule: loadSchedule,
