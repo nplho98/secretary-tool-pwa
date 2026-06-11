@@ -410,28 +410,15 @@ async function loadSchedule() {
 async function loadSettings() {
   const { data, error } = await sb
     .from("secretary_settings")
-    .select("reminder_interval_min,briefing_topics,briefing_time")
+    .select("briefing_topics,briefing_time")
     .eq("id", 1)
     .single();
 
   if (error) return;
 
-  const reminderRadio = document.querySelector(`input[name="reminderInterval"][value="${data.reminder_interval_min}"]`);
-  if (reminderRadio) reminderRadio.checked = true;
-
   document.getElementById("briefingTime").value = data.briefing_time || "08:00";
   document.getElementById("briefingTopics").value = data.briefing_topics || "";
 }
-
-document.querySelectorAll('input[name="reminderInterval"]').forEach((radio) => {
-  radio.addEventListener("change", async (e) => {
-    const minutes = parseInt(e.target.value, 10);
-    await sb.from("secretary_settings").update({
-      reminder_interval_min: minutes,
-      updated_at: new Date().toISOString(),
-    }).eq("id", 1);
-  });
-});
 
 document.getElementById("briefingTime").addEventListener("change", async (e) => {
   await sb.from("secretary_settings").update({
@@ -445,6 +432,39 @@ document.getElementById("briefingTopics").addEventListener("change", async (e) =
     briefing_topics: e.target.value,
     updated_at: new Date().toISOString(),
   }).eq("id", 1);
+});
+
+document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  btn.textContent = "產生中…";
+
+  // 立馬匯報前先確保自訂內容已存檔
+  await sb.from("secretary_settings").update({
+    briefing_topics: document.getElementById("briefingTopics").value,
+    briefing_time: document.getElementById("briefingTime").value,
+    instant_briefing_requested: true,
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+
+  const requestedAt = Date.now();
+  const timer = setInterval(async () => {
+    const { data } = await sb
+      .from("daily_briefing")
+      .select("updated_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const done = data && new Date(data.updated_at).getTime() >= requestedAt;
+    if (done || Date.now() - requestedAt > 60000) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "立馬匯報";
+      if (done) {
+        switchTab("briefing");
+      }
+    }
+  }, 3000);
 });
 
 // ── Tabs ────────────────────────────────────────────────────
