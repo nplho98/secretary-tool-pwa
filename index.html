@@ -54,11 +54,24 @@
 
   <section id="tab-notes" class="tab">
     <h2>筆記</h2>
-    <form id="noteForm" class="add-form">
-      <input id="noteInput" type="text" placeholder="快速記錄…" autocomplete="off">
-      <button type="submit">新增</button>
-    </form>
-    <div id="notesList" class="list"></div>
+    <div id="notesListView">
+      <form id="noteForm" class="note-form">
+        <input id="noteTitleInput" type="text" placeholder="標題" autocomplete="off">
+        <textarea id="noteContentInput" rows="3" placeholder="內容…"></textarea>
+        <button type="submit">新增</button>
+      </form>
+      <div id="notesList" class="list"></div>
+    </div>
+    <div id="noteDetailView" class="hidden">
+      <button id="noteBackBtn" class="back-btn">← 返回</button>
+      <div class="card">
+        <div class="content">
+          <div class="title" id="noteDetailTitle"></div>
+          <div class="meta" id="noteDetailMeta"></div>
+          <div class="note-detail-content" id="noteDetailContent"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="tab-schedule" class="tab">
@@ -80,6 +93,18 @@
           <div class="title">自訂匯報內容</div>
           <textarea id="briefingTopics" rows="4" placeholder="例如：提醒我留意天氣、幫我看一下今天有沒有重要新聞…"></textarea>
           <button id="instantBriefingBtn" type="button" class="btn-block">立馬匯報</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>重點整理</h2>
+    <div class="list">
+      <div class="card">
+        <div class="content">
+          <div class="title">資料重點整理</div>
+          <textarea id="summaryInput" rows="6" placeholder="貼上要整理的資料…"></textarea>
+          <button id="summaryBtn" type="button" class="btn-block">整理重點</button>
+          <div id="summaryResult" class="note-detail-content"></div>
         </div>
       </div>
     </div>

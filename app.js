@@ -254,6 +254,8 @@ document.getElementById("todoForm").addEventListener("submit", async (e) => {
 });
 
 // ── 筆記 (notes) ────────────────────────────────────────────
+let notesCache = [];
+
 async function loadNotes() {
   const el = document.getElementById("notesList");
   const { data, error } = await sb
@@ -267,28 +269,66 @@ async function loadNotes() {
     return;
   }
 
+  notesCache = data;
+
   if (!data.length) {
     el.innerHTML = `<div class="empty">目前沒有筆記</div>`;
     return;
   }
 
   el.innerHTML = data.map((n) => `
-    <div class="card">
-      <div class="content">
-        <div class="title">${escapeHtml(n.content)}</div>
+    <div class="card" data-id="${n.id}">
+      <div class="content note-title-click">
+        <div class="title">${escapeHtml(n.title || "(無標題)")}</div>
         <div class="meta">${fmtTime(n.created_at)}</div>
       </div>
+      <button class="del-btn">刪除</button>
     </div>
   `).join("");
+
+  el.querySelectorAll(".note-title-click").forEach((div) => {
+    div.addEventListener("click", () => {
+      const id = div.closest(".card").dataset.id;
+      const note = notesCache.find((n) => n.id === id);
+      if (note) showNoteDetail(note);
+    });
+  });
+
+  el.querySelectorAll(".del-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.closest(".card").dataset.id;
+      btn.disabled = true;
+      await sb.from("notes").delete().eq("id", id);
+      loadNotes();
+    });
+  });
 }
+
+function showNoteDetail(note) {
+  document.getElementById("noteDetailTitle").textContent = note.title || "(無標題)";
+  document.getElementById("noteDetailMeta").textContent = fmtTime(note.created_at);
+  document.getElementById("noteDetailContent").textContent = note.content || "";
+  document.getElementById("notesListView").classList.add("hidden");
+  document.getElementById("noteDetailView").classList.remove("hidden");
+}
+
+function showNotesList() {
+  document.getElementById("noteDetailView").classList.add("hidden");
+  document.getElementById("notesListView").classList.remove("hidden");
+}
+
+document.getElementById("noteBackBtn").addEventListener("click", showNotesList);
 
 document.getElementById("noteForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const input = document.getElementById("noteInput");
-  const content = input.value.trim();
-  if (!content) return;
-  input.value = "";
-  await sb.from("notes").insert({ content, source: "mobile" });
+  const titleInput = document.getElementById("noteTitleInput");
+  const contentInput = document.getElementById("noteContentInput");
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
+  if (!title && !content) return;
+  titleInput.value = "";
+  contentInput.value = "";
+  await sb.from("notes").insert({ title, content, source: "mobile" });
   loadNotes();
 });
 
@@ -330,10 +370,21 @@ async function loadSettings() {
     .eq("id", 1)
     .single();
 
-  if (error) return;
+  if (!error) {
+    document.getElementById("briefingTime").value = data.briefing_time || "08:00";
+    document.getElementById("briefingTopics").value = data.briefing_topics || "";
+  }
 
-  document.getElementById("briefingTime").value = data.briefing_time || "08:00";
-  document.getElementById("briefingTopics").value = data.briefing_topics || "";
+  const { data: sumData } = await sb
+    .from("summary_requests")
+    .select("content,result,status")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (sumData) {
+    document.getElementById("summaryInput").value = sumData.content || "";
+    document.getElementById("summaryResult").textContent = sumData.status === "done" ? (sumData.result || "") : "";
+  }
 }
 
 document.getElementById("briefingTime").addEventListener("change", async (e) => {
@@ -348,6 +399,50 @@ document.getElementById("briefingTopics").addEventListener("change", async (e) =
     briefing_topics: e.target.value,
     updated_at: new Date().toISOString(),
   }).eq("id", 1);
+});
+
+document.getElementById("summaryBtn").addEventListener("click", async (e) => {
+  const btn = e.target;
+  const content = document.getElementById("summaryInput").value.trim();
+  if (!content) return;
+  btn.disabled = true;
+  btn.textContent = "整理中…";
+  document.getElementById("summaryResult").textContent = "";
+
+  await sb.from("summary_requests").update({
+    content,
+    result: null,
+    status: "pending",
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+
+  const requestedAt = Date.now();
+  const timer = setInterval(async () => {
+    const { data } = await sb
+      .from("summary_requests")
+      .select("status,result,updated_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const updatedAfter = data && new Date(data.updated_at).getTime() >= requestedAt;
+
+    if (data && data.status === "done" && updatedAfter) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "整理重點";
+      document.getElementById("summaryResult").textContent = data.result || "";
+    } else if (data && data.status === "error" && updatedAfter) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "整理重點";
+      document.getElementById("summaryResult").textContent = "整理失敗，請稍後再試";
+    } else if (Date.now() - requestedAt > 60000) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "整理重點";
+      document.getElementById("summaryResult").textContent = "整理逾時，請確認秘書工具是否在執行";
+    }
+  }, 3000);
 });
 
 document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
@@ -398,6 +493,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.getElementById(`tab-${name}`).classList.add("active");
   document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add("active");
+  if (name !== "notes") showNotesList();
   loaders[name]();
 }
 
