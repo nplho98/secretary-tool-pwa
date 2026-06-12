@@ -144,6 +144,7 @@ main {
 }
 
 .card .content input[type="time"],
+.card .content input[type="text"],
 .card .content textarea {
   margin-top: 8px;
   width: 100%;
@@ -389,6 +390,14 @@ main {
   word-break: break-word;
   margin-top: 8px;
   font-size: 14px;
+}
+
+#summaryToNoteRow {
+  margin-top: 8px;
+}
+
+#summaryToNoteRow input {
+  margin-bottom: 8px;
 }
 
 .back-btn {

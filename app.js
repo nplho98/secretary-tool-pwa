@@ -383,7 +383,9 @@ async function loadSettings() {
 
   if (sumData) {
     document.getElementById("summaryInput").value = sumData.content || "";
-    document.getElementById("summaryResult").textContent = sumData.status === "done" ? (sumData.result || "") : "";
+    const done = sumData.status === "done";
+    document.getElementById("summaryResult").textContent = done ? (sumData.result || "") : "";
+    document.getElementById("summaryToNoteRow").classList.toggle("hidden", !done);
   }
 }
 
@@ -408,6 +410,7 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   btn.disabled = true;
   btn.textContent = "整理中…";
   document.getElementById("summaryResult").textContent = "";
+  document.getElementById("summaryToNoteRow").classList.add("hidden");
 
   await sb.from("summary_requests").update({
     content,
@@ -431,6 +434,8 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       btn.disabled = false;
       btn.textContent = "整理重點";
       document.getElementById("summaryResult").textContent = data.result || "";
+      document.getElementById("summaryNoteTitle").value = "";
+      document.getElementById("summaryToNoteRow").classList.remove("hidden");
     } else if (data && data.status === "error" && updatedAfter) {
       clearInterval(timer);
       btn.disabled = false;
@@ -443,6 +448,18 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       document.getElementById("summaryResult").textContent = "整理逾時，請確認秘書工具是否在執行";
     }
   }, 3000);
+});
+
+document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) => {
+  const btn = e.target;
+  const title = document.getElementById("summaryNoteTitle").value.trim();
+  const content = document.getElementById("summaryResult").textContent.trim();
+  if (!title || !content) return;
+  btn.disabled = true;
+  await sb.from("notes").insert({ title, content, source: "mobile" });
+  btn.disabled = false;
+  btn.textContent = "已新增";
+  setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
 });
 
 document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
