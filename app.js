@@ -435,6 +435,7 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       btn.textContent = "整理重點";
       document.getElementById("summaryResult").textContent = data.result || "";
       document.getElementById("summaryNoteTitle").value = "";
+      document.getElementById("summaryToNoteBtn").disabled = true;
       document.getElementById("summaryToNoteRow").classList.remove("hidden");
     } else if (data && data.status === "error" && updatedAfter) {
       clearInterval(timer);
@@ -450,6 +451,10 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   }, 3000);
 });
 
+document.getElementById("summaryNoteTitle").addEventListener("input", (e) => {
+  document.getElementById("summaryToNoteBtn").disabled = !e.target.value.trim();
+});
+
 document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) => {
   const btn = e.target;
   const title = document.getElementById("summaryNoteTitle").value.trim();
@@ -457,7 +462,10 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   if (!title || !content) return;
   btn.disabled = true;
   await sb.from("notes").insert({ title, content, source: "mobile" });
-  btn.disabled = false;
+  document.getElementById("summaryInput").value = "";
+  document.getElementById("summaryResult").textContent = "";
+  document.getElementById("summaryNoteTitle").value = "";
+  document.getElementById("summaryToNoteRow").classList.add("hidden");
   btn.textContent = "已新增";
   setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
 });
