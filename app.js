@@ -490,7 +490,7 @@ document.getElementById("stockRefreshBtn").addEventListener("click", async (e) =
       .maybeSingle();
 
     const done = data && new Date(data.updated_at).getTime() >= requestedAt;
-    if (done || Date.now() - requestedAt > 60000) {
+    if (done || Date.now() - requestedAt > 90000) {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "即時更新股票";
