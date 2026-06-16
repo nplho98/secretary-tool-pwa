@@ -470,6 +470,35 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
 });
 
+document.getElementById("stockRefreshBtn").addEventListener("click", async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  btn.textContent = "更新中…";
+
+  await sb.from("secretary_settings").update({
+    instant_stock_refresh_requested: true,
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+
+  const requestedAt = Date.now();
+  const timer = setInterval(async () => {
+    const { data } = await sb
+      .from("stock_quotes")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const done = data && new Date(data.updated_at).getTime() >= requestedAt;
+    if (done || Date.now() - requestedAt > 60000) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "即時更新股票";
+      if (done) loadQuotes();
+    }
+  }, 3000);
+});
+
 document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
   const btn = e.target;
   btn.disabled = true;
