@@ -38,7 +38,7 @@
         <form id="watchlistForm" class="add-form watchlist-form">
           <input id="wlSymbol" type="text" placeholder="代號，例如 2330.TW" autocomplete="off">
           <input id="wlName" type="text" placeholder="名稱" autocomplete="off">
-          <button type="submit">新增</button>
+          <button id="wlAddBtn" type="submit">新增</button>
         </form>
       </div>
     </div>
@@ -60,7 +60,7 @@
           </div>
         </div>
         <textarea id="todoContentInput" rows="2" placeholder="內容（選填）…"></textarea>
-        <button type="submit">新增</button>
+        <button id="todoAddBtn" type="submit">新增</button>
       </form>
       <div id="todosList" class="list"></div>
     </div>
@@ -101,7 +101,7 @@
           <option value="">未分類</option>
         </select>
         <textarea id="noteContentInput" rows="3" placeholder="內容…"></textarea>
-        <button type="submit">新增</button>
+        <button id="noteAddBtn" type="submit">新增</button>
       </form>
       <div id="notesList" class="list"></div>
     </div>
@@ -132,7 +132,7 @@
         <div class="content">
           <div class="title">自訂匯報內容</div>
           <textarea id="briefingTopics" rows="4" placeholder="例如：提醒我留意天氣、幫我看一下今天有沒有重要新聞…"></textarea>
-          <button id="instantBriefingBtn" type="button" class="btn-block">立馬匯報</button>
+          <button id="instantBriefingBtn" type="button" class="btn-block btn-blue">立刻匯報</button>
         </div>
       </div>
     </div>
@@ -143,7 +143,7 @@
         <div class="content">
           <div class="title">資料重點整理</div>
           <textarea id="summaryInput" rows="6" placeholder="貼上要整理的資料…"></textarea>
-          <button id="summaryBtn" type="button" class="btn-block">整理重點</button>
+          <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
           <div id="summaryResult" class="note-detail-content"></div>
           <div id="summaryToNoteRow" class="hidden">
             <input id="summaryNoteTitle" type="text" placeholder="筆記標題" autocomplete="off">

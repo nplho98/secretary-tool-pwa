@@ -678,7 +678,7 @@ document.getElementById("instantBriefingBtn").addEventListener("click", async (e
     if (done || Date.now() - requestedAt > 60000) {
       clearInterval(timer);
       btn.disabled = false;
-      btn.textContent = "立馬匯報";
+      btn.textContent = "立刻匯報";
       if (done) {
         switchTab("briefing");
       }
