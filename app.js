@@ -200,6 +200,23 @@ async function loadOutlook() {
 }
 
 // ── 待辦事項 (todos) ────────────────────────────────────────
+let todosCache = [];
+
+function combineDateTime(dateStr, timeStr) {
+  if (!dateStr) return null;
+  return new Date(`${dateStr}T${timeStr || "00:00"}:00`).toISOString();
+}
+
+function splitDateTime(iso) {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
 async function loadTodos() {
   const el = document.getElementById("todosList");
   const { data, error } = await sb
@@ -213,6 +230,8 @@ async function loadTodos() {
     return;
   }
 
+  todosCache = data;
+
   if (!data.length) {
     el.innerHTML = `<div class="empty">目前沒有待辦事項</div>`;
     return;
@@ -222,13 +241,21 @@ async function loadTodos() {
     <div class="card" data-id="${t.id}">
       <div class="todo-row">
         <input type="checkbox" class="done-check">
-        <div class="content">
+        <div class="content todo-title-click">
           <div class="title">${escapeHtml(t.title)}</div>
-          <div class="meta">${fmtTime(t.created_at)}</div>
+          ${t.due_date ? `<div class="meta">${fmtTime(t.due_date)}</div>` : ""}
         </div>
       </div>
     </div>
   `).join("");
+
+  el.querySelectorAll(".todo-title-click").forEach((div) => {
+    div.addEventListener("click", () => {
+      const id = div.closest(".card").dataset.id;
+      const todo = todosCache.find((t) => t.id === id);
+      if (todo) showTodoEdit(todo);
+    });
+  });
 
   el.querySelectorAll(".done-check").forEach((cb) => {
     cb.addEventListener("change", async (e) => {
@@ -248,13 +275,55 @@ async function loadTodos() {
   });
 }
 
+function showTodoEdit(todo) {
+  document.getElementById("todoEditForm").dataset.id = todo.id;
+  document.getElementById("todoEditTitle").value = todo.title || "";
+  document.getElementById("todoEditContent").value = todo.notes || "";
+  const { date, time } = splitDateTime(todo.due_date);
+  document.getElementById("todoEditDate").value = date;
+  document.getElementById("todoEditTime").value = time;
+  document.getElementById("todosListView").classList.add("hidden");
+  document.getElementById("todoEditView").classList.remove("hidden");
+}
+
+function showTodosList() {
+  document.getElementById("todoEditView").classList.add("hidden");
+  document.getElementById("todosListView").classList.remove("hidden");
+}
+
+document.getElementById("todoBackBtn").addEventListener("click", showTodosList);
+
+document.getElementById("todoEditForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = e.target.dataset.id;
+  const title = document.getElementById("todoEditTitle").value.trim();
+  if (!title) return;
+  const due_date = combineDateTime(
+    document.getElementById("todoEditDate").value,
+    document.getElementById("todoEditTime").value
+  );
+  const notes = document.getElementById("todoEditContent").value.trim();
+  await sb.from("todos").update({ title, due_date, notes }).eq("id", id);
+  showTodosList();
+  loadTodos();
+});
+
 document.getElementById("todoForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = document.getElementById("todoInput");
   const title = input.value.trim();
   if (!title) return;
+  const due_date = combineDateTime(
+    document.getElementById("todoDateInput").value,
+    document.getElementById("todoTimeInput").value
+  );
+  const contentInput = document.getElementById("todoContentInput");
+  const notes = contentInput.value.trim();
   input.value = "";
-  await sb.from("todos").insert({ title, source: "mobile" });
+  document.getElementById("todoDateInput").value = "";
+  document.getElementById("todoTimeInput").value = "";
+  contentInput.value = "";
+  await sb.from("todos").insert({ title, due_date, notes, source: "mobile" });
   loadTodos();
 });
 
@@ -337,36 +406,6 @@ document.getElementById("noteForm").addEventListener("submit", async (e) => {
   await sb.from("notes").insert({ title, content, source: "mobile" });
   loadNotes();
 });
-
-// ── 行程 (schedule) ─────────────────────────────────────────
-async function loadSchedule() {
-  const el = document.getElementById("scheduleList");
-  const { data, error } = await sb
-    .from("schedule")
-    .select("*")
-    .order("start_time", { ascending: true })
-    .limit(30);
-
-  if (error) {
-    el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
-    return;
-  }
-
-  if (!data.length) {
-    el.innerHTML = `<div class="empty">目前沒有行程</div>`;
-    return;
-  }
-
-  el.innerHTML = data.map((s) => `
-    <div class="card">
-      <div class="content">
-        <div class="title">${escapeHtml(s.title)}</div>
-        <div class="meta">${fmtTime(s.start_time)}${s.end_time ? " ~ " + fmtTime(s.end_time) : ""}</div>
-        ${s.notes ? `<div class="meta">${escapeHtml(s.notes)}</div>` : ""}
-      </div>
-    </div>
-  `).join("");
-}
 
 // ── 設定 (secretary_settings) ──────────────────────────────
 async function loadSettings() {
@@ -544,7 +583,6 @@ const loaders = {
   stocks: () => { loadQuotes(); loadOutlook(); },
   todos: loadTodos,
   notes: loadNotes,
-  schedule: loadSchedule,
   settings: loadSettings,
 };
 

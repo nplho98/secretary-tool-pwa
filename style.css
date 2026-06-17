@@ -381,8 +381,18 @@ main {
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
 }
 
-.note-title-click {
+.note-title-click,
+.todo-title-click {
   cursor: pointer;
+}
+
+.datetime-row {
+  display: flex;
+  gap: 8px;
+}
+
+.datetime-row input {
+  flex: 1;
 }
 
 .note-detail-content {

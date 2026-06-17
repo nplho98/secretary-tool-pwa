@@ -46,11 +46,30 @@
 
   <section id="tab-todos" class="tab">
     <h2>待辦事項</h2>
-    <form id="todoForm" class="add-form">
-      <input id="todoInput" type="text" placeholder="新增待辦事項…" autocomplete="off">
-      <button type="submit">新增</button>
-    </form>
-    <div id="todosList" class="list"></div>
+    <div id="todosListView">
+      <form id="todoForm" class="note-form">
+        <input id="todoInput" type="text" placeholder="標題" autocomplete="off">
+        <div class="datetime-row">
+          <input id="todoDateInput" type="date">
+          <input id="todoTimeInput" type="time">
+        </div>
+        <textarea id="todoContentInput" rows="2" placeholder="內容（選填）…"></textarea>
+        <button type="submit">新增</button>
+      </form>
+      <div id="todosList" class="list"></div>
+    </div>
+    <div id="todoEditView" class="hidden">
+      <button id="todoBackBtn" class="back-btn">← 返回</button>
+      <form id="todoEditForm" class="note-form">
+        <input id="todoEditTitle" type="text" placeholder="標題">
+        <div class="datetime-row">
+          <input id="todoEditDate" type="date">
+          <input id="todoEditTime" type="time">
+        </div>
+        <textarea id="todoEditContent" rows="3" placeholder="內容…"></textarea>
+        <button type="submit">儲存</button>
+      </form>
+    </div>
   </section>
 
   <section id="tab-notes" class="tab">
@@ -73,11 +92,6 @@
         </div>
       </div>
     </div>
-  </section>
-
-  <section id="tab-schedule" class="tab">
-    <h2>行程</h2>
-    <div id="scheduleList" class="list"></div>
   </section>
 
   <section id="tab-settings" class="tab">
@@ -121,7 +135,6 @@
   <button class="tab-btn" data-tab="stocks">股票</button>
   <button class="tab-btn" data-tab="todos">待辦</button>
   <button class="tab-btn" data-tab="notes">筆記</button>
-  <button class="tab-btn" data-tab="schedule">行程</button>
   <button class="tab-btn" data-tab="settings">設定</button>
 </nav>
 
