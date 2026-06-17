@@ -344,16 +344,68 @@ document.getElementById("todoForm").addEventListener("submit", async (e) => {
   loadTodos();
 });
 
+// ── 筆記分類 (note_categories) ────────────────────────────────
+let categoriesCache = [];
+
+async function loadCategories() {
+  const { data, error } = await sb
+    .from("note_categories")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) return;
+  categoriesCache = data;
+
+  const options = data.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+
+  const filter = document.getElementById("noteCategoryFilter");
+  const keepFilter = filter.value;
+  filter.innerHTML = `<option value="">全部分類</option>${options}`;
+  filter.value = keepFilter;
+
+  document.getElementById("noteCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
+  document.getElementById("noteEditCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
+
+  const manageEl = document.getElementById("categoryManageList");
+  manageEl.innerHTML = data.map((c) => `
+    <span class="category-chip" data-id="${c.id}">
+      ${escapeHtml(c.name)}
+      <button type="button" class="category-del-btn">×</button>
+    </span>
+  `).join("");
+
+  manageEl.querySelectorAll(".category-del-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      if (!confirm("確定要刪除嗎？此分類下的筆記會變回未分類。")) return;
+      const id = e.target.closest(".category-chip").dataset.id;
+      await sb.from("note_categories").delete().eq("id", id);
+      loadCategories();
+      loadNotes();
+    });
+  });
+}
+
+document.getElementById("categoryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("categoryNameInput");
+  const name = input.value.trim();
+  if (!name) return;
+  input.value = "";
+  await sb.from("note_categories").insert({ name });
+  loadCategories();
+});
+
+document.getElementById("noteCategoryFilter").addEventListener("change", loadNotes);
+
 // ── 筆記 (notes) ────────────────────────────────────────────
 let notesCache = [];
 
 async function loadNotes() {
   const el = document.getElementById("notesList");
-  const { data, error } = await sb
-    .from("notes")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(30);
+  const categoryId = document.getElementById("noteCategoryFilter").value;
+  let query = sb.from("notes").select("*").order("created_at", { ascending: false }).limit(30);
+  query = categoryId ? query.eq("category_id", categoryId) : query;
+  const { data, error } = await query;
 
   if (error) {
     el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
@@ -367,15 +419,18 @@ async function loadNotes() {
     return;
   }
 
-  el.innerHTML = data.map((n) => `
+  el.innerHTML = data.map((n) => {
+    const category = categoriesCache.find((c) => c.id === n.category_id);
+    return `
     <div class="card" data-id="${n.id}">
       <div class="content note-title-click">
         <div class="title">${escapeHtml(n.title || "(無標題)")}</div>
-        <div class="meta">${fmtTime(n.created_at)}</div>
+        <div class="meta">${fmtTime(n.created_at)}${category ? "　·　" + escapeHtml(category.name) : ""}</div>
       </div>
       <button class="del-btn">刪除</button>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   el.querySelectorAll(".note-title-click").forEach((div) => {
     div.addEventListener("click", () => {
@@ -401,6 +456,7 @@ function showNoteDetail(note) {
   document.getElementById("noteDetailMeta").textContent = fmtTime(note.created_at);
   document.getElementById("noteEditTitle").value = note.title || "";
   document.getElementById("noteEditContent").value = note.content || "";
+  document.getElementById("noteEditCategorySelect").value = note.category_id || "";
   document.getElementById("notesListView").classList.add("hidden");
   document.getElementById("noteDetailView").classList.remove("hidden");
 }
@@ -417,8 +473,9 @@ document.getElementById("noteEditForm").addEventListener("submit", async (e) => 
   const id = e.target.dataset.id;
   const title = document.getElementById("noteEditTitle").value.trim();
   const content = document.getElementById("noteEditContent").value.trim();
+  const category_id = document.getElementById("noteEditCategorySelect").value || null;
   if (!title && !content) return;
-  await sb.from("notes").update({ title, content }).eq("id", id);
+  await sb.from("notes").update({ title, content, category_id }).eq("id", id);
   showNotesList();
   loadNotes();
 });
@@ -427,12 +484,15 @@ document.getElementById("noteForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const titleInput = document.getElementById("noteTitleInput");
   const contentInput = document.getElementById("noteContentInput");
+  const categorySelect = document.getElementById("noteCategorySelect");
   const title = titleInput.value.trim();
   const content = contentInput.value.trim();
+  const category_id = categorySelect.value || null;
   if (!title && !content) return;
   titleInput.value = "";
   contentInput.value = "";
-  await sb.from("notes").insert({ title, content, source: "mobile" });
+  categorySelect.value = "";
+  await sb.from("notes").insert({ title, content, category_id, source: "mobile" });
   loadNotes();
 });
 
@@ -631,7 +691,7 @@ const loaders = {
   briefing: loadBriefing,
   stocks: () => { loadQuotes(); loadOutlook(); },
   todos: loadTodos,
-  notes: loadNotes,
+  notes: () => { loadCategories().then(loadNotes); },
   settings: loadSettings,
 };
 

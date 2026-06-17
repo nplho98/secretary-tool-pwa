@@ -161,6 +161,10 @@ main {
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
 }
 
+.card .del-btn {
+  background: var(--danger);
+}
+
 .card .content input[type="time"],
 .card .content input[type="text"],
 .card .content textarea {
@@ -376,6 +380,7 @@ main {
 }
 
 .note-form input,
+.note-form select,
 .note-form textarea {
   background: var(--card);
   border: 1px solid var(--border);
@@ -387,6 +392,53 @@ main {
   box-shadow: var(--shadow);
   box-sizing: border-box;
   resize: vertical;
+}
+
+#noteCategoryFilter {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.category-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+}
+
+.category-chip button {
+  background: var(--danger);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .note-form button {

@@ -87,8 +87,19 @@
   <section id="tab-notes" class="tab">
     <h2>筆記</h2>
     <div id="notesListView">
+      <form id="categoryForm" class="add-form">
+        <input id="categoryNameInput" type="text" placeholder="新增分類…" autocomplete="off">
+        <button type="submit">新增</button>
+      </form>
+      <div id="categoryManageList" class="category-list"></div>
+      <select id="noteCategoryFilter">
+        <option value="">全部分類</option>
+      </select>
       <form id="noteForm" class="note-form">
         <input id="noteTitleInput" type="text" placeholder="標題" autocomplete="off">
+        <select id="noteCategorySelect">
+          <option value="">未分類</option>
+        </select>
         <textarea id="noteContentInput" rows="3" placeholder="內容…"></textarea>
         <button type="submit">新增</button>
       </form>
@@ -99,6 +110,9 @@
       <div class="meta" id="noteDetailMeta"></div>
       <form id="noteEditForm" class="note-form">
         <input id="noteEditTitle" type="text" placeholder="標題">
+        <select id="noteEditCategorySelect">
+          <option value="">未分類</option>
+        </select>
         <textarea id="noteEditContent" rows="6" placeholder="內容…"></textarea>
         <button type="submit">儲存</button>
       </form>
