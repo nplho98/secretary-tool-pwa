@@ -217,6 +217,15 @@ function splitDateTime(iso) {
   };
 }
 
+function syncFieldPlaceholder(input) {
+  input.classList.toggle("has-value", !!input.value);
+}
+
+["todoDateInput", "todoTimeInput", "todoEditDate", "todoEditTime"].forEach((id) => {
+  const input = document.getElementById(id);
+  input.addEventListener("input", () => syncFieldPlaceholder(input));
+});
+
 async function loadTodos() {
   const el = document.getElementById("todosList");
   const { data, error } = await sb
@@ -280,8 +289,12 @@ function showTodoEdit(todo) {
   document.getElementById("todoEditTitle").value = todo.title || "";
   document.getElementById("todoEditContent").value = todo.notes || "";
   const { date, time } = splitDateTime(todo.due_date);
-  document.getElementById("todoEditDate").value = date;
-  document.getElementById("todoEditTime").value = time;
+  const dateInput = document.getElementById("todoEditDate");
+  const timeInput = document.getElementById("todoEditTime");
+  dateInput.value = date;
+  timeInput.value = time;
+  syncFieldPlaceholder(dateInput);
+  syncFieldPlaceholder(timeInput);
   document.getElementById("todosListView").classList.add("hidden");
   document.getElementById("todoEditView").classList.remove("hidden");
 }
@@ -319,9 +332,13 @@ document.getElementById("todoForm").addEventListener("submit", async (e) => {
   );
   const contentInput = document.getElementById("todoContentInput");
   const notes = contentInput.value.trim();
+  const dateInput = document.getElementById("todoDateInput");
+  const timeInput = document.getElementById("todoTimeInput");
   input.value = "";
-  document.getElementById("todoDateInput").value = "";
-  document.getElementById("todoTimeInput").value = "";
+  dateInput.value = "";
+  timeInput.value = "";
+  syncFieldPlaceholder(dateInput);
+  syncFieldPlaceholder(timeInput);
   contentInput.value = "";
   await sb.from("todos").insert({ title, due_date, notes, source: "mobile" });
   loadTodos();

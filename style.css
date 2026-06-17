@@ -401,15 +401,33 @@ main {
 }
 
 .field {
+  position: relative;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.field-label {
-  font-size: 11px;
+.field input {
+  width: 100%;
+  color: transparent;
+}
+
+.field input:focus,
+.field input.has-value {
+  color: var(--text);
+}
+
+.field-placeholder {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.field input:focus ~ .field-placeholder,
+.field input.has-value ~ .field-placeholder {
+  display: none;
 }
 
 .note-detail-content {
