@@ -286,17 +286,14 @@ async function loadTodos() {
 
   el.querySelectorAll(".done-check").forEach((cb) => {
     cb.addEventListener("change", async (e) => {
-      if (!confirm("確定要標記完成嗎？")) {
+      if (!confirm("確定要標記完成嗎？完成後會直接刪除這筆待辦。")) {
         cb.checked = false;
         return;
       }
       const card = e.target.closest(".card");
       const id = card.dataset.id;
       cb.disabled = true;
-      await sb.from("todos").update({
-        done: true,
-        updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      await sb.from("todos").delete().eq("id", id);
       loadTodos();
     });
   });
