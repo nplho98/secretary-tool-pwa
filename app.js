@@ -139,6 +139,7 @@ async function loadQuotes() {
 
     customEl.querySelectorAll(".del-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
+        if (!confirm("確定要刪除嗎？")) return;
         const card = e.target.closest("[data-id]");
         const id = card.dataset.id;
         const symbol = card.dataset.symbol;
@@ -296,6 +297,7 @@ async function loadNotes() {
 
   el.querySelectorAll(".del-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
+      if (!confirm("確定要刪除嗎？")) return;
       const id = e.target.closest(".card").dataset.id;
       btn.disabled = true;
       await sb.from("notes").delete().eq("id", id);
