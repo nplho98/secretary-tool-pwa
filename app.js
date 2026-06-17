@@ -232,6 +232,10 @@ async function loadTodos() {
 
   el.querySelectorAll(".done-check").forEach((cb) => {
     cb.addEventListener("change", async (e) => {
+      if (!confirm("確定要標記完成嗎？")) {
+        cb.checked = false;
+        return;
+      }
       const card = e.target.closest(".card");
       const id = card.dataset.id;
       cb.disabled = true;
