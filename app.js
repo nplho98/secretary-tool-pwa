@@ -382,7 +382,7 @@ async function loadCategories() {
 
   const filter = document.getElementById("noteCategoryFilter");
   const keepFilter = filter.value;
-  filter.innerHTML = `<option value="">全部分類</option>${options}`;
+  filter.innerHTML = `<option value="">顯示全部分類</option>${options}`;
   filter.value = keepFilter;
 
   document.getElementById("noteCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
