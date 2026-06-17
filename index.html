@@ -24,7 +24,10 @@
   </section>
 
   <section id="tab-stocks" class="tab">
-    <button id="stockRefreshBtn" type="button" class="btn-block">即時更新股票</button>
+    <div class="button-row">
+      <button id="stockRefreshBtn" type="button">即時更新股票</button>
+      <button id="wlAddBtn" type="submit" form="watchlistForm">新增</button>
+    </div>
     <div class="stock-grid">
       <div class="stock-quad">
         <h2>固定指數</h2>
@@ -38,7 +41,6 @@
         <form id="watchlistForm" class="add-form watchlist-form">
           <input id="wlSymbol" type="text" placeholder="代號，例如 2330.TW" autocomplete="off">
           <input id="wlName" type="text" placeholder="名稱" autocomplete="off">
-          <button id="wlAddBtn" type="submit">新增</button>
         </form>
       </div>
     </div>

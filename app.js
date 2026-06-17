@@ -151,8 +151,9 @@ async function loadQuotes() {
     });
   }
 
-  const form = document.getElementById("watchlistForm");
-  form.style.display = watchlist && watchlist.length >= MAX_CUSTOM ? "none" : "flex";
+  const atMax = watchlist && watchlist.length >= MAX_CUSTOM;
+  document.getElementById("watchlistForm").style.display = atMax ? "none" : "flex";
+  document.getElementById("wlAddBtn").style.display = atMax ? "none" : "";
 }
 
 document.getElementById("watchlistForm").addEventListener("submit", async (e) => {
