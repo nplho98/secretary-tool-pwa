@@ -648,7 +648,13 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
-document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+document.getElementById("refreshBtn").addEventListener("click", (e) => {
+  e.currentTarget.classList.add("spinning");
+  refreshAll();
+});
+document.getElementById("refreshBtn").addEventListener("animationend", (e) => {
+  e.currentTarget.classList.remove("spinning");
+});
 
 function refreshAll() {
   Object.values(loaders).forEach((fn) => fn());
