@@ -400,8 +400,16 @@ main {
   gap: 8px;
 }
 
-.datetime-row input {
+.field {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-label {
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .note-detail-content {
