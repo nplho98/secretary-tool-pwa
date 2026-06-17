@@ -419,6 +419,12 @@ document.getElementById("categoryForm").addEventListener("submit", async (e) => 
 
 document.getElementById("noteCategoryFilter").addEventListener("change", loadNotes);
 
+document.getElementById("categoryManageToggle").addEventListener("click", (e) => {
+  const list = document.getElementById("categoryManageList");
+  const hidden = list.classList.toggle("hidden");
+  e.target.textContent = hidden ? "管理分類 ▾" : "管理分類 ▴";
+});
+
 // ── 筆記 (notes) ────────────────────────────────────────────
 let notesCache = [];
 
