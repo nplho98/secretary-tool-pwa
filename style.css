@@ -451,6 +451,10 @@ main {
   margin-bottom: 10px;
 }
 
+.category-list.hidden {
+  display: none;
+}
+
 .category-chip {
   display: flex;
   align-items: center;
