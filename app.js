@@ -152,8 +152,9 @@ async function loadQuotes() {
   }
 
   const atMax = watchlist && watchlist.length >= MAX_CUSTOM;
-  document.getElementById("watchlistForm").style.display = atMax ? "none" : "flex";
-  document.getElementById("wlAddBtn").style.display = atMax ? "none" : "";
+  ["wlAddBtn", "wlSymbol", "wlName"].forEach((id) => {
+    document.getElementById(id).style.display = atMax ? "none" : "";
+  });
 }
 
 document.getElementById("watchlistForm").addEventListener("submit", async (e) => {

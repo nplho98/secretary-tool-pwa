@@ -85,6 +85,7 @@ main {
 
 .button-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -99,6 +100,20 @@ main {
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
+}
+
+.button-row input {
+  flex: 1 1 45%;
+  min-width: 100px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
 }
 
 .button-row .btn-danger-row {
@@ -319,15 +334,6 @@ main {
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
-}
-
-.watchlist-form {
-  flex-wrap: wrap;
-}
-
-.watchlist-form input {
-  flex: 1 1 45%;
-  min-width: 100px;
 }
 
 .cur-price {
