@@ -25,7 +25,7 @@
 
   <section id="tab-stocks" class="tab">
     <div class="button-row">
-      <button id="stockRefreshBtn" type="button">即時更新股票</button>
+      <button id="stockRefreshBtn" type="button" class="btn-danger-row">更新股價</button>
       <button id="wlAddBtn" type="submit" form="watchlistForm">新增</button>
     </div>
     <div class="stock-grid">
@@ -134,7 +134,7 @@
         <div class="content">
           <div class="title">自訂匯報內容</div>
           <textarea id="briefingTopics" rows="4" placeholder="例如：提醒我留意天氣、幫我看一下今天有沒有重要新聞…"></textarea>
-          <button id="instantBriefingBtn" type="button" class="btn-block btn-blue">立刻匯報</button>
+          <button id="instantBriefingBtn" type="button" class="btn-block btn-gold">立刻匯報</button>
         </div>
       </div>
     </div>
@@ -145,7 +145,7 @@
         <div class="content">
           <div class="title">資料重點整理</div>
           <textarea id="summaryInput" rows="6" placeholder="貼上要整理的資料…"></textarea>
-          <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
+          <button id="summaryBtn" type="button" class="btn-block btn-gold">整理重點</button>
           <div id="summaryResult" class="note-detail-content"></div>
           <div id="summaryToNoteRow" class="hidden">
             <input id="summaryNoteTitle" type="text" placeholder="筆記標題" autocomplete="off">
