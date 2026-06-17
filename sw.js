@@ -1,4 +1,4 @@
-const CACHE = "secretary-tool-v13";
+const CACHE = "secretary-tool-v14";
 const ASSETS = [
   "./",
   "./index.html",
