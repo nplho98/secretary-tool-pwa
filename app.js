@@ -380,9 +380,10 @@ async function loadNotes() {
 }
 
 function showNoteDetail(note) {
-  document.getElementById("noteDetailTitle").textContent = note.title || "(無標題)";
+  document.getElementById("noteEditForm").dataset.id = note.id;
   document.getElementById("noteDetailMeta").textContent = fmtTime(note.created_at);
-  document.getElementById("noteDetailContent").textContent = note.content || "";
+  document.getElementById("noteEditTitle").value = note.title || "";
+  document.getElementById("noteEditContent").value = note.content || "";
   document.getElementById("notesListView").classList.add("hidden");
   document.getElementById("noteDetailView").classList.remove("hidden");
 }
@@ -393,6 +394,17 @@ function showNotesList() {
 }
 
 document.getElementById("noteBackBtn").addEventListener("click", showNotesList);
+
+document.getElementById("noteEditForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = e.target.dataset.id;
+  const title = document.getElementById("noteEditTitle").value.trim();
+  const content = document.getElementById("noteEditContent").value.trim();
+  if (!title && !content) return;
+  await sb.from("notes").update({ title, content }).eq("id", id);
+  showNotesList();
+  loadNotes();
+});
 
 document.getElementById("noteForm").addEventListener("submit", async (e) => {
   e.preventDefault();

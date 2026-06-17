@@ -84,13 +84,12 @@
     </div>
     <div id="noteDetailView" class="hidden">
       <button id="noteBackBtn" class="back-btn">← 返回</button>
-      <div class="card">
-        <div class="content">
-          <div class="title" id="noteDetailTitle"></div>
-          <div class="meta" id="noteDetailMeta"></div>
-          <div class="note-detail-content" id="noteDetailContent"></div>
-        </div>
-      </div>
+      <div class="meta" id="noteDetailMeta"></div>
+      <form id="noteEditForm" class="note-form">
+        <input id="noteEditTitle" type="text" placeholder="標題">
+        <textarea id="noteEditContent" rows="6" placeholder="內容…"></textarea>
+        <button type="submit">儲存</button>
+      </form>
     </div>
   </section>
 
