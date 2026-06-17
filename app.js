@@ -511,8 +511,28 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   document.getElementById("summaryResult").textContent = "";
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryToNoteRow").classList.add("hidden");
+  await sb.from("summary_requests").update({
+    content: null,
+    result: null,
+    status: "idle",
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
   btn.textContent = "已新增";
   setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
+});
+
+document.getElementById("summaryClearBtn").addEventListener("click", async () => {
+  if (!confirm("確定要刪除嗎？")) return;
+  document.getElementById("summaryInput").value = "";
+  document.getElementById("summaryResult").textContent = "";
+  document.getElementById("summaryNoteTitle").value = "";
+  document.getElementById("summaryToNoteRow").classList.add("hidden");
+  await sb.from("summary_requests").update({
+    content: null,
+    result: null,
+    status: "idle",
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
 });
 
 document.getElementById("stockRefreshBtn").addEventListener("click", async (e) => {
