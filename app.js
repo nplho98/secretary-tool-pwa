@@ -649,7 +649,7 @@ document.getElementById("stockRefreshBtn").addEventListener("click", async (e) =
     if (done || Date.now() - requestedAt > 90000) {
       clearInterval(timer);
       btn.disabled = false;
-      btn.textContent = "更新股價";
+      btn.textContent = "更新";
       if (done) loadQuotes();
     }
   }, 3000);
