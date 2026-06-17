@@ -54,9 +54,10 @@
             <input id="todoDateInput" type="date">
             <span class="field-placeholder">日期（選填）</span>
           </div>
-          <div class="field">
-            <input id="todoTimeInput" type="time">
-            <span class="field-placeholder">時間（選填）</span>
+          <div class="time-select-row">
+            <select id="todoTimeAmpm"><option value="">--</option><option value="AM">上午</option><option value="PM">下午</option></select>
+            <select id="todoTimeHour"></select>
+            <select id="todoTimeMinute"></select>
           </div>
         </div>
         <textarea id="todoContentInput" rows="2" placeholder="內容（選填）…"></textarea>
@@ -73,9 +74,10 @@
             <input id="todoEditDate" type="date">
             <span class="field-placeholder">日期（選填）</span>
           </div>
-          <div class="field">
-            <input id="todoEditTime" type="time">
-            <span class="field-placeholder">時間（選填）</span>
+          <div class="time-select-row">
+            <select id="todoEditTimeAmpm"><option value="">--</option><option value="AM">上午</option><option value="PM">下午</option></select>
+            <select id="todoEditTimeHour"></select>
+            <select id="todoEditTimeMinute"></select>
           </div>
         </div>
         <textarea id="todoEditContent" rows="3" placeholder="內容…"></textarea>

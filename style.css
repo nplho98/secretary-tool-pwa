@@ -505,6 +505,25 @@ main {
   gap: 8px;
 }
 
+.time-select-row {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.time-select-row select {
+  flex: 1;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 4px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+}
+
 .field {
   position: relative;
   flex: 1;

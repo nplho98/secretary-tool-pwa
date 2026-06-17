@@ -204,28 +204,44 @@ async function loadOutlook() {
 // ── 待辦事項 (todos) ────────────────────────────────────────
 let todosCache = [];
 
-function combineDateTime(dateStr, timeStr) {
-  if (!dateStr) return null;
-  return new Date(`${dateStr}T${timeStr || "00:00"}:00`).toISOString();
+function combineDateTime(dateStr, hour12, minute, ampm) {
+  if (!dateStr || !hour12 || minute === "" || !ampm) return null;
+  let h = parseInt(hour12, 10) % 12;
+  if (ampm === "PM") h += 12;
+  return new Date(`${dateStr}T${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`).toISOString();
 }
 
 function splitDateTime(iso) {
-  if (!iso) return { date: "", time: "" };
+  if (!iso) return { date: "", hour12: "", minute: "", ampm: "" };
   const d = new Date(iso);
   const pad = (n) => String(n).padStart(2, "0");
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const ampm = d.getHours() >= 12 ? "PM" : "AM";
+  let hour12 = d.getHours() % 12;
+  if (hour12 === 0) hour12 = 12;
+  return { date, hour12: String(hour12), minute: String(d.getMinutes()), ampm };
 }
 
 function syncFieldPlaceholder(input) {
   input.classList.toggle("has-value", !!input.value);
 }
 
-["todoDateInput", "todoTimeInput", "todoEditDate", "todoEditTime"].forEach((id) => {
+["todoDateInput", "todoEditDate"].forEach((id) => {
   const input = document.getElementById(id);
   input.addEventListener("input", () => syncFieldPlaceholder(input));
+});
+
+function fillTimeSelect(select, options, placeholder) {
+  select.innerHTML = `<option value="">${placeholder}</option>` + options.map((v) =>
+    `<option value="${v}">${String(v).padStart(2, "0")}</option>`
+  ).join("");
+}
+
+["todoTimeHour", "todoEditTimeHour"].forEach((id) => {
+  fillTimeSelect(document.getElementById(id), Array.from({ length: 12 }, (_, i) => i + 1), "時");
+});
+["todoTimeMinute", "todoEditTimeMinute"].forEach((id) => {
+  fillTimeSelect(document.getElementById(id), Array.from({ length: 60 }, (_, i) => i), "分");
 });
 
 async function loadTodos() {
@@ -290,13 +306,13 @@ function showTodoEdit(todo) {
   document.getElementById("todoEditForm").dataset.id = todo.id;
   document.getElementById("todoEditTitle").value = todo.title || "";
   document.getElementById("todoEditContent").value = todo.notes || "";
-  const { date, time } = splitDateTime(todo.due_date);
+  const { date, hour12, minute, ampm } = splitDateTime(todo.due_date);
   const dateInput = document.getElementById("todoEditDate");
-  const timeInput = document.getElementById("todoEditTime");
   dateInput.value = date;
-  timeInput.value = time;
   syncFieldPlaceholder(dateInput);
-  syncFieldPlaceholder(timeInput);
+  document.getElementById("todoEditTimeAmpm").value = ampm;
+  document.getElementById("todoEditTimeHour").value = hour12;
+  document.getElementById("todoEditTimeMinute").value = minute;
   document.getElementById("todosListView").classList.add("hidden");
   document.getElementById("todoEditView").classList.remove("hidden");
 }
@@ -315,7 +331,9 @@ document.getElementById("todoEditForm").addEventListener("submit", async (e) => 
   if (!title) return;
   const due_date = combineDateTime(
     document.getElementById("todoEditDate").value,
-    document.getElementById("todoEditTime").value
+    document.getElementById("todoEditTimeHour").value,
+    document.getElementById("todoEditTimeMinute").value,
+    document.getElementById("todoEditTimeAmpm").value
   );
   const notes = document.getElementById("todoEditContent").value.trim();
   await sb.from("todos").update({ title, due_date, notes }).eq("id", id);
@@ -328,19 +346,24 @@ document.getElementById("todoForm").addEventListener("submit", async (e) => {
   const input = document.getElementById("todoInput");
   const title = input.value.trim();
   if (!title) return;
+  const ampmSelect = document.getElementById("todoTimeAmpm");
+  const hourSelect = document.getElementById("todoTimeHour");
+  const minuteSelect = document.getElementById("todoTimeMinute");
   const due_date = combineDateTime(
     document.getElementById("todoDateInput").value,
-    document.getElementById("todoTimeInput").value
+    hourSelect.value,
+    minuteSelect.value,
+    ampmSelect.value
   );
   const contentInput = document.getElementById("todoContentInput");
   const notes = contentInput.value.trim();
   const dateInput = document.getElementById("todoDateInput");
-  const timeInput = document.getElementById("todoTimeInput");
   input.value = "";
   dateInput.value = "";
-  timeInput.value = "";
   syncFieldPlaceholder(dateInput);
-  syncFieldPlaceholder(timeInput);
+  ampmSelect.value = "";
+  hourSelect.value = "";
+  minuteSelect.value = "";
   contentInput.value = "";
   await sb.from("todos").insert({ title, due_date, notes, source: "mobile" });
   loadTodos();
