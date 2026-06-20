@@ -743,6 +743,7 @@ function switchTab(name) {
 
 // ── 返回鍵導航 ───────────────────────────────────────────────
 let openSubView = null; // null | "todoEdit" | "noteDetail"
+let exitArmTimer = null;
 
 function initBackButtonHandling() {
   history.replaceState({ secretaryBase: true }, "");
@@ -760,11 +761,14 @@ function initBackButtonHandling() {
       history.pushState({ secretaryGuard: true }, "");
       return;
     }
-    if (confirm("確定要離開秘書工具嗎？")) {
-      history.back();
-    } else {
+    // 頂層：「再按一次返回鍵離開」— 故意不馬上重新武裝，讓下一次真實的返回鍵
+    // 因為沒有上一頁紀錄可退，直接由系統關閉 App；時限內沒再按就重新武裝。
+    clearTimeout(exitArmTimer);
+    document.getElementById("exitToast").classList.remove("hidden");
+    exitArmTimer = setTimeout(() => {
+      document.getElementById("exitToast").classList.add("hidden");
       history.pushState({ secretaryGuard: true }, "");
-    }
+    }, 2000);
   });
 }
 
