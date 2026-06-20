@@ -312,6 +312,8 @@ function showTodoEdit(todo) {
   document.getElementById("todoEditTimeMinute").value = minute;
   document.getElementById("todosListView").classList.add("hidden");
   document.getElementById("todoEditView").classList.remove("hidden");
+  openSubView = "todoEdit";
+  history.pushState({ secretarySubView: "todoEdit" }, "");
 }
 
 function showTodosList() {
@@ -319,7 +321,7 @@ function showTodosList() {
   document.getElementById("todosListView").classList.remove("hidden");
 }
 
-document.getElementById("todoBackBtn").addEventListener("click", showTodosList);
+document.getElementById("todoBackBtn").addEventListener("click", () => history.back());
 
 document.getElementById("todoEditForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -334,7 +336,7 @@ document.getElementById("todoEditForm").addEventListener("submit", async (e) => 
   );
   const notes = document.getElementById("todoEditContent").value.trim();
   await sb.from("todos").update({ title, due_date, notes }).eq("id", id);
-  showTodosList();
+  history.back();
   loadTodos();
 });
 
@@ -487,6 +489,8 @@ function showNoteDetail(note) {
   document.getElementById("noteEditCategorySelect").value = note.category_id || "";
   document.getElementById("notesListView").classList.add("hidden");
   document.getElementById("noteDetailView").classList.remove("hidden");
+  openSubView = "noteDetail";
+  history.pushState({ secretarySubView: "noteDetail" }, "");
 }
 
 function showNotesList() {
@@ -494,7 +498,7 @@ function showNotesList() {
   document.getElementById("notesListView").classList.remove("hidden");
 }
 
-document.getElementById("noteBackBtn").addEventListener("click", showNotesList);
+document.getElementById("noteBackBtn").addEventListener("click", () => history.back());
 
 document.getElementById("noteEditForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -504,7 +508,7 @@ document.getElementById("noteEditForm").addEventListener("submit", async (e) => 
   const category_id = document.getElementById("noteEditCategorySelect").value || null;
   if (!title && !content) return;
   await sb.from("notes").update({ title, content, category_id }).eq("id", id);
-  showNotesList();
+  history.back();
   loadNotes();
 });
 
@@ -676,7 +680,7 @@ document.getElementById("stockRefreshBtn").addEventListener("click", async (e) =
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "更新";
-      if (done) loadQuotes();
+      loadQuotes(); // 逾時也刷新，避免後端其實已更新但畫面沒換
     }
   }, 3000);
 });
@@ -724,12 +728,44 @@ const loaders = {
 };
 
 function switchTab(name) {
+  if (openSubView) {
+    if (openSubView === "todoEdit") showTodosList();
+    else if (openSubView === "noteDetail") showNotesList();
+    openSubView = null;
+    history.replaceState({ secretaryGuard: true }, "");
+  }
   document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.getElementById(`tab-${name}`).classList.add("active");
   document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add("active");
-  if (name !== "notes") showNotesList();
   loaders[name]();
+}
+
+// ── 返回鍵導航 ───────────────────────────────────────────────
+let openSubView = null; // null | "todoEdit" | "noteDetail"
+
+function initBackButtonHandling() {
+  history.replaceState({ secretaryBase: true }, "");
+  history.pushState({ secretaryGuard: true }, "");
+  window.addEventListener("popstate", () => {
+    if (openSubView === "todoEdit") {
+      showTodosList();
+      openSubView = null;
+      history.pushState({ secretaryGuard: true }, "");
+      return;
+    }
+    if (openSubView === "noteDetail") {
+      showNotesList();
+      openSubView = null;
+      history.pushState({ secretaryGuard: true }, "");
+      return;
+    }
+    if (confirm("確定要離開秘書工具嗎？")) {
+      history.back();
+    } else {
+      history.pushState({ secretaryGuard: true }, "");
+    }
+  });
 }
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -749,6 +785,7 @@ function refreshAll() {
 }
 
 // ── Init ────────────────────────────────────────────────────
+initBackButtonHandling();
 switchTab("briefing");
 refreshAll();
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
