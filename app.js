@@ -585,13 +585,11 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   const timer = setInterval(async () => {
     const { data } = await sb
       .from("summary_requests")
-      .select("status,result,updated_at")
+      .select("status,result")
       .eq("id", 1)
       .maybeSingle();
 
-    const updatedAfter = data && new Date(data.updated_at).getTime() >= requestedAt;
-
-    if (data && data.status === "done" && updatedAfter) {
+    if (data && data.status === "done") {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "整理重點";
@@ -599,7 +597,7 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       document.getElementById("summaryNoteTitle").value = "";
       document.getElementById("summaryToNoteBtn").disabled = true;
       document.getElementById("summaryToNoteRow").classList.remove("hidden");
-    } else if (data && data.status === "error" && updatedAfter) {
+    } else if (data && data.status === "error") {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "整理重點";
