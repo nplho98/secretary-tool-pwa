@@ -387,6 +387,7 @@ async function loadCategories() {
 
   document.getElementById("noteCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
   document.getElementById("noteEditCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
+  document.getElementById("summaryNoteCategorySelect").innerHTML = `<option value="">未分類</option>${options}`;
 
   const manageEl = document.getElementById("categoryManageList");
   manageEl.innerHTML = data.map((c) => `
@@ -619,12 +620,14 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   const btn = e.target;
   const title = document.getElementById("summaryNoteTitle").value.trim();
   const content = document.getElementById("summaryResult").textContent.trim();
+  const category_id = document.getElementById("summaryNoteCategorySelect").value || null;
   if (!title || !content) return;
   btn.disabled = true;
-  await sb.from("notes").insert({ title, content, source: "mobile" });
+  await sb.from("notes").insert({ title, content, category_id, source: "mobile" });
   document.getElementById("summaryInput").value = "";
   document.getElementById("summaryResult").textContent = "";
   document.getElementById("summaryNoteTitle").value = "";
+  document.getElementById("summaryNoteCategorySelect").value = "";
   document.getElementById("summaryToNoteRow").classList.add("hidden");
   await sb.from("summary_requests").update({
     content: null,
@@ -718,7 +721,7 @@ const loaders = {
   stocks: () => { loadQuotes(); loadOutlook(); },
   todos: loadTodos,
   notes: () => { loadCategories().then(loadNotes); },
-  settings: loadSettings,
+  settings: () => { loadCategories(); loadSettings(); },
 };
 
 function switchTab(name) {
