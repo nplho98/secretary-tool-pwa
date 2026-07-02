@@ -250,7 +250,7 @@ async function loadTodos() {
     .from("todos")
     .select("*")
     .eq("done", false)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) {
     el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
@@ -753,6 +753,11 @@ function refreshAll() {
 switchTab("briefing");
 refreshAll();
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
+
+// 股票分頁顯示中時每 2 秒刷新報價（其他分頁維持 30 秒全頁刷新）
+setInterval(() => {
+  if (document.getElementById("tab-stocks").classList.contains("active")) loadQuotes();
+}, 2000);
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
