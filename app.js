@@ -198,7 +198,6 @@ async function loadQuotes() {
           }).eq("id", row.dataset.id);
         }
         loadQuotes();
-        checkAlerts();
       });
     });
   }
@@ -800,27 +799,6 @@ document.getElementById("refreshBtn").addEventListener("animationend", (e) => {
 function refreshAll() {
   Object.values(loaders).forEach((fn) => fn());
 }
-
-// ── 自選股警報橫幅（任何分頁都看得到；點「查看」跳到股票頁關閉）──
-async function checkAlerts() {
-  const el = document.getElementById("alertBanner");
-  try {
-    const { data, error } = await sb
-      .from("stock_watchlist")
-      .select("id,name,alert_state")
-      .in("alert_state", ["profit", "stoploss"]);
-    if (error || !data || !data.length) { el.hidden = true; return; }
-    el.innerHTML = data.map((w) =>
-      `<span class="${w.alert_state === "profit" ? "ab-profit" : "ab-stoploss"}">🔔 ${escapeHtml(w.name)}${w.alert_state === "profit" ? "獲利" : "停損"}警報</span>`
-    ).join("") + `<button id="abGoto" type="button">查看</button>`;
-    el.hidden = false;
-    document.getElementById("abGoto").onclick = () => switchTab("stocks");
-  } catch (_) {
-    el.hidden = true;   // 欄位尚未建立（SQL 未執行）等情況：靜默隱藏
-  }
-}
-setInterval(checkAlerts, 5000);
-checkAlerts();
 
 // ── Init ────────────────────────────────────────────────────
 switchTab("briefing");

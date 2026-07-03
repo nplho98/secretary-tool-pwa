@@ -611,16 +611,3 @@ main {
   50% { box-shadow: 0 0 0 6px rgba(229, 57, 53, 0); }
 }
 
-/* 全域警報橫幅（任何分頁都看得到） */
-.alert-banner {
-  position: sticky; top: 0; z-index: 50;
-  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-  padding: 8px 14px; background: #fff3e0; border-bottom: 2px solid #fb8c00;
-  font-size: 13px; font-weight: bold;
-}
-.alert-banner .ab-profit { color: #e53935; }
-.alert-banner .ab-stoploss { color: #2e7d32; }
-.alert-banner button {
-  margin-left: auto; padding: 3px 14px; font-size: 12px; font-weight: bold;
-  border: none; border-radius: 6px; background: #fb8c00; color: #fff; cursor: pointer;
-}
