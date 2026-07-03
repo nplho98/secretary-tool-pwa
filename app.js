@@ -107,11 +107,14 @@ async function loadQuotes() {
   }
 
   // ── 自選股 ──
+  // 正在輸入獲利/停損價時不重繪清單，避免 2 秒自動刷新把輸入洗掉
+  const editing = customEl.contains(document.activeElement) &&
+    document.activeElement.tagName === "INPUT";
   if (wError) {
     customEl.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(wError.message)}</div>`;
   } else if (!watchlist.length) {
     customEl.innerHTML = `<div class="empty">尚未新增自選股</div>`;
-  } else {
+  } else if (!editing) {
     customEl.innerHTML = watchlist.map((w) => {
       const q = quoteMap[w.symbol];
       let priceHtml = "尚無報價";
@@ -126,11 +129,32 @@ async function loadQuotes() {
         priceHtml = `${fmtNum(prevClose)} (<span class="cur-price ${dirCls}">${fmtNum(q.price)}</span>) ${fmtSigned(q.change)}`;
       }
 
+      // 獲利/停損警報列（警報中才顯示；台股慣例：獲利紅、停損綠）
+      const alertState = w.alert_state || "none";
+      let alertHtml = "";
+      if (alertState === "profit" || alertState === "stoploss") {
+        const label = alertState === "profit" ? "獲利警報" : "停損警報";
+        cardCls += alertState === "profit" ? " alert-profit" : " alert-stoploss";
+        alertHtml = `
+          <div class="alert-row">
+            <span class="alert-label">🔔 ${label}中</span>
+            <button class="alert-close-btn" data-id="${w.id}" data-state="${alertState}">關閉警報</button>
+          </div>`;
+      }
+
       return `
       <div class="${cardCls}" data-id="${w.id}" data-symbol="${escapeHtml(w.symbol)}">
         <div class="content">
           <div class="title">${escapeHtml(w.name)}（${escapeHtml(w.symbol)}）</div>
           <div class="meta">${priceHtml}</div>
+          <div class="tp-sl-row" data-id="${w.id}">
+            <label>獲利<input class="tp-input" type="number" step="any" inputmode="decimal"
+              value="${w.take_profit_price ?? ""}" placeholder="—"></label>
+            <label>停損<input class="sl-input" type="number" step="any" inputmode="decimal"
+              value="${w.stop_loss_price ?? ""}" placeholder="—"></label>
+            <button class="tp-sl-save" type="button">設定</button>
+          </div>
+          ${alertHtml}
         </div>
         <button class="del-btn">刪除</button>
       </div>
@@ -147,6 +171,34 @@ async function loadQuotes() {
         await sb.from("stock_watchlist").delete().eq("id", id);
         await sb.from("stock_quotes").delete().eq("symbol", symbol);
         loadQuotes();
+      });
+    });
+
+    // 設定獲利/停損價（清空＝取消該邊警報；改條件即重新武裝）
+    customEl.querySelectorAll(".tp-sl-save").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const row = e.target.closest(".tp-sl-row");
+        const tpv = row.querySelector(".tp-input").value.trim();
+        const slv = row.querySelector(".sl-input").value.trim();
+        btn.disabled = true;
+        await sb.from("stock_watchlist").update({
+          take_profit_price: tpv === "" ? null : Number(tpv),
+          stop_loss_price: slv === "" ? null : Number(slv),
+          alert_state: "none",
+        }).eq("id", row.dataset.id);
+        loadQuotes();
+        checkAlerts();
+      });
+    });
+
+    // 關閉警報（語音停止；價格退回條件外後自動重新武裝）
+    customEl.querySelectorAll(".alert-close-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const ack = e.target.dataset.state === "profit" ? "profit_ack" : "stoploss_ack";
+        btn.disabled = true;
+        await sb.from("stock_watchlist").update({ alert_state: ack }).eq("id", e.target.dataset.id);
+        loadQuotes();
+        checkAlerts();
       });
     });
   }
@@ -748,6 +800,27 @@ document.getElementById("refreshBtn").addEventListener("animationend", (e) => {
 function refreshAll() {
   Object.values(loaders).forEach((fn) => fn());
 }
+
+// ── 自選股警報橫幅（任何分頁都看得到；點「查看」跳到股票頁關閉）──
+async function checkAlerts() {
+  const el = document.getElementById("alertBanner");
+  try {
+    const { data, error } = await sb
+      .from("stock_watchlist")
+      .select("id,name,alert_state")
+      .in("alert_state", ["profit", "stoploss"]);
+    if (error || !data || !data.length) { el.hidden = true; return; }
+    el.innerHTML = data.map((w) =>
+      `<span class="${w.alert_state === "profit" ? "ab-profit" : "ab-stoploss"}">🔔 ${escapeHtml(w.name)}${w.alert_state === "profit" ? "獲利" : "停損"}警報</span>`
+    ).join("") + `<button id="abGoto" type="button">查看</button>`;
+    el.hidden = false;
+    document.getElementById("abGoto").onclick = () => switchTab("stocks");
+  } catch (_) {
+    el.hidden = true;   // 欄位尚未建立（SQL 未執行）等情況：靜默隱藏
+  }
+}
+setInterval(checkAlerts, 5000);
+checkAlerts();
 
 // ── Init ────────────────────────────────────────────────────
 switchTab("briefing");

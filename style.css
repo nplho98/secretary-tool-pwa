@@ -578,3 +578,52 @@ main {
   padding: 0 0 12px;
 }
 
+
+/* ── 自選股獲利/停損警報 ─────────────────────────────── */
+.tp-sl-row {
+  display: flex; gap: 8px; align-items: center;
+  margin-top: 6px; font-size: 12px; color: var(--muted);
+}
+.tp-sl-row label { display: flex; align-items: center; gap: 4px; }
+.tp-sl-row input {
+  width: 74px; padding: 3px 6px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.tp-sl-row .tp-sl-save {
+  padding: 3px 10px; font-size: 12px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); cursor: pointer;
+}
+.tp-sl-row .tp-sl-save:hover { border-color: var(--accent); }
+
+.alert-row {
+  display: flex; gap: 10px; align-items: center; margin-top: 6px;
+}
+.alert-row .alert-label { font-size: 13px; font-weight: bold; }
+.alert-row .alert-close-btn {
+  padding: 3px 12px; font-size: 12px; font-weight: bold;
+  border: none; border-radius: 6px; background: #37474f; color: #fff; cursor: pointer;
+}
+
+/* 台股慣例：獲利紅、停損綠；警報中卡片脈動提示 */
+.quote-card.alert-profit { border: 2px solid #e53935; animation: alertPulse 1.2s infinite; }
+.quote-card.alert-profit .alert-label { color: #e53935; }
+.quote-card.alert-stoploss { border: 2px solid #2e7d32; animation: alertPulse 1.2s infinite; }
+.quote-card.alert-stoploss .alert-label { color: #2e7d32; }
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(229, 57, 53, 0); }
+}
+
+/* 全域警報橫幅（任何分頁都看得到） */
+.alert-banner {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 8px 14px; background: #fff3e0; border-bottom: 2px solid #fb8c00;
+  font-size: 13px; font-weight: bold;
+}
+.alert-banner .ab-profit { color: #e53935; }
+.alert-banner .ab-stoploss { color: #2e7d32; }
+.alert-banner button {
+  margin-left: auto; padding: 3px 14px; font-size: 12px; font-weight: bold;
+  border: none; border-radius: 6px; background: #fb8c00; color: #fff; cursor: pointer;
+}
