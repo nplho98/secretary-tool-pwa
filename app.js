@@ -832,6 +832,11 @@ setInterval(() => {
   if (document.getElementById("tab-stocks").classList.contains("active")) loadQuotes();
 }, 2000);
 
+// 待辦即時同步：外部訊息（如異常監控軟件）一寫入就刷新，不用等 30 秒輪詢或手動更新
+sb.channel("todos-live")
+  .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => loadTodos())
+  .subscribe();
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
   let swRefreshing = false;
