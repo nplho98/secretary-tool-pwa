@@ -589,20 +589,17 @@ main {
   width: 74px; padding: 3px 6px; font-size: 12px;
   border: 1px solid var(--border); border-radius: 6px;
 }
-.tp-sl-row .tp-sl-save {
-  padding: 3px 10px; font-size: 12px; border: 1px solid var(--border);
-  border-radius: 6px; background: var(--card); cursor: pointer;
+/* 啟動＝藍底白字（新增類）、關閉＝紅底白字（停止類） */
+.tp-sl-row .alert-toggle {
+  padding: 3px 12px; font-size: 12px; font-weight: bold;
+  border: none; border-radius: 6px; background: #1565c0; color: #fff; cursor: pointer;
 }
-.tp-sl-row .tp-sl-save:hover { border-color: var(--accent); }
+.tp-sl-row .alert-toggle.on { background: var(--danger); }
 
 .alert-row {
   display: flex; gap: 10px; align-items: center; margin-top: 6px;
 }
 .alert-row .alert-label { font-size: 13px; font-weight: bold; }
-.alert-row .alert-close-btn {
-  padding: 3px 12px; font-size: 12px; font-weight: bold;
-  border: none; border-radius: 6px; background: #37474f; color: #fff; cursor: pointer;
-}
 
 /* 台股慣例：獲利紅、停損綠；警報中卡片脈動提示 */
 .quote-card.alert-profit { border: 2px solid #e53935; animation: alertPulse 1.2s infinite; }

@@ -138,9 +138,11 @@ async function loadQuotes() {
         alertHtml = `
           <div class="alert-row">
             <span class="alert-label">🔔 ${label}中</span>
-            <button class="alert-close-btn" data-id="${w.id}" data-state="${alertState}">關閉警報</button>
           </div>`;
       }
+
+      // 啟動/關閉開關：按啟動才依欄位價位監控，按關閉停止（價位保留）
+      const enabled = !!w.alert_enabled;
 
       return `
       <div class="${cardCls}" data-id="${w.id}" data-symbol="${escapeHtml(w.symbol)}">
@@ -152,7 +154,8 @@ async function loadQuotes() {
               value="${w.take_profit_price ?? ""}" placeholder="—"></label>
             <label>停損<input class="sl-input" type="number" step="any" inputmode="decimal"
               value="${w.stop_loss_price ?? ""}" placeholder="—"></label>
-            <button class="tp-sl-save" type="button">設定</button>
+            <button class="alert-toggle ${enabled ? "on" : ""}" data-enabled="${enabled ? "1" : "0"}"
+              type="button">${enabled ? "關閉" : "啟動"}</button>
           </div>
           ${alertHtml}
         </div>
@@ -174,29 +177,26 @@ async function loadQuotes() {
       });
     });
 
-    // 設定獲利/停損價（清空＝取消該邊警報；改條件即重新武裝）
-    customEl.querySelectorAll(".tp-sl-save").forEach((btn) => {
+    // 啟動＝存下欄位價位並開始監控；關閉＝停止監控＋警報靜音（價位保留）
+    customEl.querySelectorAll(".alert-toggle").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const row = e.target.closest(".tp-sl-row");
-        const tpv = row.querySelector(".tp-input").value.trim();
-        const slv = row.querySelector(".sl-input").value.trim();
         btn.disabled = true;
-        await sb.from("stock_watchlist").update({
-          take_profit_price: tpv === "" ? null : Number(tpv),
-          stop_loss_price: slv === "" ? null : Number(slv),
-          alert_state: "none",
-        }).eq("id", row.dataset.id);
-        loadQuotes();
-        checkAlerts();
-      });
-    });
-
-    // 關閉警報（語音停止；價格退回條件外後自動重新武裝）
-    customEl.querySelectorAll(".alert-close-btn").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const ack = e.target.dataset.state === "profit" ? "profit_ack" : "stoploss_ack";
-        btn.disabled = true;
-        await sb.from("stock_watchlist").update({ alert_state: ack }).eq("id", e.target.dataset.id);
+        if (e.target.dataset.enabled === "1") {
+          await sb.from("stock_watchlist").update({
+            alert_enabled: false,
+            alert_state: "none",
+          }).eq("id", row.dataset.id);
+        } else {
+          const tpv = row.querySelector(".tp-input").value.trim();
+          const slv = row.querySelector(".sl-input").value.trim();
+          await sb.from("stock_watchlist").update({
+            take_profit_price: tpv === "" ? null : Number(tpv),
+            stop_loss_price: slv === "" ? null : Number(slv),
+            alert_enabled: true,
+            alert_state: "none",
+          }).eq("id", row.dataset.id);
+        }
         loadQuotes();
         checkAlerts();
       });
