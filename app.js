@@ -43,215 +43,7 @@ async function loadBriefing() {
   `;
 }
 
-// ── 自選股報價 (stock_watchlist / stock_quotes) ─────────────
-function fmtNum(n, digits = 2) {
-  if (n === null || n === undefined) return "—";
-  return Number(n).toLocaleString("zh-TW", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
-
-function fmtSigned(n, digits = 2) {
-  if (n === null || n === undefined) return "—";
-  const v = Number(n);
-  return (v >= 0 ? "+" : "") + v.toFixed(digits);
-}
-
-const FIXED_SYMBOLS = ["2330.TW", "^SOX", "^IXIC", "YM=F", "TXFN1", "^TWII"];
-const MAX_CUSTOM = 6;
-
-function quoteCardCls(q) {
-  let cardCls = "quote-card";
-  let pctCls = "";
-  if (q.status === "limit_up") cardCls += " limit-up";
-  else if (q.status === "limit_down") cardCls += " limit-down";
-  else if (q.status === "up") pctCls = "pct-up";
-  else if (q.status === "down") pctCls = "pct-down";
-  return { cardCls, pctCls };
-}
-
-async function loadQuotes() {
-  const fixedEl = document.getElementById("fixedQuotesList");
-  const customEl = document.getElementById("customQuotesList");
-
-  const [{ data: quotes, error: qError }, { data: watchlist, error: wError }] = await Promise.all([
-    sb.from("stock_quotes").select("*").order("sort_order", { ascending: true }),
-    sb.from("stock_watchlist").select("*").order("sort_order", { ascending: true }),
-  ]);
-
-  if (qError) {
-    fixedEl.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(qError.message)}</div>`;
-    customEl.innerHTML = "";
-    return;
-  }
-
-  const quoteMap = {};
-  quotes.forEach((q) => { quoteMap[q.symbol] = q; });
-
-  const fixedQuotes = quotes.filter((q) => FIXED_SYMBOLS.includes(q.symbol));
-  if (!fixedQuotes.length) {
-    fixedEl.innerHTML = `<div class="empty">尚未取得報價，請確認秘書工具是否在執行</div>`;
-  } else {
-    fixedEl.innerHTML = fixedQuotes.map((q) => {
-      const { cardCls, pctCls } = quoteCardCls(q);
-      return `
-      <div class="${cardCls}">
-        <div class="content">
-          <div class="title">${escapeHtml(q.name)}（${escapeHtml(q.symbol)}）</div>
-          <div class="meta">
-            ${fmtNum(q.price)}
-            <span class="${pctCls}">${fmtSigned(q.change)}　${fmtSigned(q.pct_change)}%</span>
-          </div>
-        </div>
-      </div>
-    `;
-    }).join("");
-  }
-
-  // ── 自選股 ──
-  // 正在輸入獲利/停損價時不重繪清單，避免 2 秒自動刷新把輸入洗掉
-  const editing = customEl.contains(document.activeElement) &&
-    document.activeElement.tagName === "INPUT";
-  if (wError) {
-    customEl.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(wError.message)}</div>`;
-  } else if (!watchlist.length) {
-    customEl.innerHTML = `<div class="empty">尚未新增自選股</div>`;
-  } else if (!editing) {
-    customEl.innerHTML = watchlist.map((w) => {
-      const q = quoteMap[w.symbol];
-      let priceHtml = "尚無報價";
-      let cardCls = "quote-card";
-      if (q) {
-        const { cardCls: c } = quoteCardCls(q);
-        cardCls = c;
-        const prevClose = q.price - q.change;
-        const dirCls = (q.status === "limit_up" || q.status === "up") ? "up"
-          : (q.status === "limit_down" || q.status === "down") ? "down"
-          : "flat";
-        priceHtml = `${fmtNum(prevClose)} (<span class="cur-price ${dirCls}">${fmtNum(q.price)}</span>) ${fmtSigned(q.change)}`;
-      }
-
-      // 獲利/停損警報列（警報中才顯示；台股慣例：獲利紅、停損綠）
-      const alertState = w.alert_state || "none";
-      let alertHtml = "";
-      if (alertState === "profit" || alertState === "stoploss") {
-        const label = alertState === "profit" ? "獲利警報" : "停損警報";
-        cardCls += alertState === "profit" ? " alert-profit" : " alert-stoploss";
-        alertHtml = `
-          <div class="alert-row">
-            <span class="alert-label">🔔 ${label}中</span>
-          </div>`;
-      }
-
-      // 啟動/關閉開關：按啟動才依欄位價位監控，按關閉停止（價位保留）
-      const enabled = !!w.alert_enabled;
-
-      return `
-      <div class="${cardCls}" data-id="${w.id}" data-symbol="${escapeHtml(w.symbol)}">
-        <div class="content">
-          <div class="title">${escapeHtml(w.name)}（${escapeHtml(w.symbol)}）</div>
-          <div class="meta">${priceHtml}</div>
-          <div class="tp-sl-row" data-id="${w.id}">
-            <label>獲利<input class="tp-input" type="number" step="any" inputmode="decimal"
-              value="${w.take_profit_price ?? ""}" placeholder="—"></label>
-            <label>停損<input class="sl-input" type="number" step="any" inputmode="decimal"
-              value="${w.stop_loss_price ?? ""}" placeholder="—"></label>
-            <button class="alert-toggle ${enabled ? "on" : ""}" data-enabled="${enabled ? "1" : "0"}"
-              type="button">${enabled ? "關閉" : "啟動"}</button>
-          </div>
-          ${alertHtml}
-        </div>
-        <button class="del-btn">刪除</button>
-      </div>
-    `;
-    }).join("");
-
-    customEl.querySelectorAll(".del-btn").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        if (!confirm("確定要刪除嗎？")) return;
-        const card = e.target.closest("[data-id]");
-        const id = card.dataset.id;
-        const symbol = card.dataset.symbol;
-        btn.disabled = true;
-        await sb.from("stock_watchlist").delete().eq("id", id);
-        await sb.from("stock_quotes").delete().eq("symbol", symbol);
-        loadQuotes();
-      });
-    });
-
-    // 啟動＝存下欄位價位並開始監控；關閉＝停止監控＋警報靜音（價位保留）
-    customEl.querySelectorAll(".alert-toggle").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const row = e.target.closest(".tp-sl-row");
-        btn.disabled = true;
-        if (e.target.dataset.enabled === "1") {
-          await sb.from("stock_watchlist").update({
-            alert_enabled: false,
-            alert_state: "none",
-          }).eq("id", row.dataset.id);
-        } else {
-          const tpv = row.querySelector(".tp-input").value.trim();
-          const slv = row.querySelector(".sl-input").value.trim();
-          await sb.from("stock_watchlist").update({
-            take_profit_price: tpv === "" ? null : Number(tpv),
-            stop_loss_price: slv === "" ? null : Number(slv),
-            alert_enabled: true,
-            alert_state: "none",
-          }).eq("id", row.dataset.id);
-        }
-        loadQuotes();
-      });
-    });
-  }
-
-  const atMax = watchlist && watchlist.length >= MAX_CUSTOM;
-  ["wlAddBtn", "wlSymbol", "wlName"].forEach((id) => {
-    document.getElementById(id).style.display = atMax ? "none" : "";
-  });
-}
-
-document.getElementById("watchlistForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const symbol = document.getElementById("wlSymbol").value.trim();
-  const name = document.getElementById("wlName").value.trim();
-  if (!symbol || !name) return;
-
-  const { data: existing } = await sb.from("stock_watchlist").select("id");
-  if (existing && existing.length >= MAX_CUSTOM) return;
-
-  await sb.from("stock_watchlist").insert({
-    symbol,
-    name,
-    source: "yahoo",
-    sort_order: 7 + (existing ? existing.length : 0),
-  });
-
-  e.target.reset();
-  loadQuotes();
-});
-
-// ── 大盤趨勢研判 (market_outlook) ────────────────────────────
-async function loadOutlook() {
-  const el = document.getElementById("outlookCard");
-  const { data, error } = await sb
-    .from("market_outlook")
-    .select("*")
-    .eq("id", 1)
-    .single();
-
-  if (error || !data || !data.summary) {
-    el.innerHTML = `<div class="empty">尚無研判資料</div>`;
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="content">
-        <div class="title">${escapeHtml(data.summary)}</div>
-        <div class="meta">${fmtTime(data.updated_at)}</div>
-      </div>
-    </div>
-  `;
-}
-
+/* ponytail: 股票功能已整組移除（報價/自選股/大盤研判），要復原去 git 翻 2026-07-17 前的版本 */
 // ── 待辦事項 (todos) ────────────────────────────────────────
 let todosCache = [];
 
@@ -704,35 +496,6 @@ document.getElementById("summaryClearBtn").addEventListener("click", async () =>
   }).eq("id", 1);
 });
 
-document.getElementById("stockRefreshBtn").addEventListener("click", async (e) => {
-  const btn = e.target;
-  btn.disabled = true;
-  btn.textContent = "更新中…";
-
-  await sb.from("secretary_settings").update({
-    instant_stock_refresh_requested: true,
-    updated_at: new Date().toISOString(),
-  }).eq("id", 1);
-
-  const requestedAt = Date.now();
-  const timer = setInterval(async () => {
-    const { data } = await sb
-      .from("stock_quotes")
-      .select("updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const done = data && new Date(data.updated_at).getTime() >= requestedAt;
-    if (done || Date.now() - requestedAt > 90000) {
-      clearInterval(timer);
-      btn.disabled = false;
-      btn.textContent = "更新";
-      loadQuotes(); // 逾時也刷新，避免後端其實已更新但畫面沒換
-    }
-  }, 3000);
-});
-
 document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
   const btn = e.target;
   btn.disabled = true;
@@ -769,7 +532,6 @@ document.getElementById("instantBriefingBtn").addEventListener("click", async (e
 // ── Tabs ────────────────────────────────────────────────────
 const loaders = {
   briefing: loadBriefing,
-  stocks: () => { loadQuotes(); loadOutlook(); },
   todos: loadTodos,
   notes: () => { loadCategories().then(loadNotes); },
   settings: () => { loadCategories(); loadSettings(); },
@@ -804,11 +566,6 @@ function refreshAll() {
 switchTab("briefing");
 refreshAll();
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
-
-// 股票分頁顯示中時每 2 秒刷新報價（其他分頁維持 30 秒全頁刷新）
-setInterval(() => {
-  if (document.getElementById("tab-stocks").classList.contains("active")) loadQuotes();
-}, 2000);
 
 // 待辦即時同步：外部訊息（如異常監控軟件）一寫入就刷新，不用等 30 秒輪詢或手動更新
 sb.channel("todos-live")

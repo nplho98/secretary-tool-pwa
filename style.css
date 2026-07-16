@@ -83,64 +83,6 @@ main {
   font-weight: 600;
 }
 
-.button-row {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.button-row button {
-  flex: 0 0 auto;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
-}
-
-.button-row input {
-  flex: 1 1 110px;
-  min-width: 80px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: var(--text);
-  font-size: 14px;
-  font-family: inherit;
-  box-shadow: var(--shadow);
-  box-sizing: border-box;
-}
-
-.button-row .btn-danger-row {
-  background: var(--danger);
-}
-
-.stock-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.stock-quad h2 {
-  font-size: 13px;
-  margin: 0 0 8px;
-}
-
-.stock-quad .list {
-  gap: 6px;
-}
-
-.stock-quad .list + .list {
-  margin-top: 6px;
-}
-
 .hint {
   font-size: 12px;
   color: var(--muted);
@@ -241,7 +183,6 @@ main {
 }
 
 .btn-blue,
-#wlAddBtn,
 #todoAddBtn,
 #noteAddBtn,
 #categoryAddBtn {
@@ -253,46 +194,6 @@ main {
   opacity: 0.6;
   cursor: default;
 }
-
-.quote-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  box-shadow: var(--shadow);
-}
-
-.quote-card .title {
-  font-weight: 600;
-}
-
-.quote-card .meta {
-  font-size: 13px;
-  margin-top: 2px;
-  color: var(--text);
-}
-
-.quote-card.limit-up {
-  background: var(--danger);
-  color: #fff;
-}
-
-.quote-card.limit-down {
-  background: var(--accent);
-  color: #fff;
-}
-
-.quote-card.limit-up .meta,
-.quote-card.limit-down .meta {
-  color: #fff;
-}
-
-.pct-up { color: #e53935; }
-.pct-down { color: #2e7d32; }
 
 .empty {
   color: var(--muted);
@@ -331,30 +232,6 @@ main {
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
-}
-
-.cur-price {
-  font-weight: 700;
-}
-
-.cur-price.up { color: #e53935; }
-.cur-price.down { color: #00c853; }
-.cur-price.flat { color: var(--text); }
-
-.quote-card.limit-up .cur-price,
-.quote-card.limit-down .cur-price {
-  color: #fff;
-}
-
-.quote-card .del-btn {
-  background: var(--danger);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  align-self: center;
 }
 
 .todo-row {
@@ -577,37 +454,3 @@ main {
   cursor: pointer;
   padding: 0 0 12px;
 }
-
-
-/* ── 自選股獲利/停損警報 ─────────────────────────────── */
-.tp-sl-row {
-  display: flex; gap: 8px; align-items: center;
-  margin-top: 6px; font-size: 12px; color: var(--muted);
-}
-.tp-sl-row label { display: flex; align-items: center; gap: 4px; }
-.tp-sl-row input {
-  width: 74px; padding: 3px 6px; font-size: 12px;
-  border: 1px solid var(--border); border-radius: 6px;
-}
-/* 啟動＝藍底白字（新增類）、關閉＝紅底白字（停止類） */
-.tp-sl-row .alert-toggle {
-  padding: 3px 12px; font-size: 12px; font-weight: bold;
-  border: none; border-radius: 6px; background: #1565c0; color: #fff; cursor: pointer;
-}
-.tp-sl-row .alert-toggle.on { background: var(--danger); }
-
-.alert-row {
-  display: flex; gap: 10px; align-items: center; margin-top: 6px;
-}
-.alert-row .alert-label { font-size: 13px; font-weight: bold; }
-
-/* 台股慣例：獲利紅、停損綠；警報中卡片脈動提示 */
-.quote-card.alert-profit { border: 2px solid #e53935; animation: alertPulse 1.2s infinite; }
-.quote-card.alert-profit .alert-label { color: #e53935; }
-.quote-card.alert-stoploss { border: 2px solid #2e7d32; animation: alertPulse 1.2s infinite; }
-.quote-card.alert-stoploss .alert-label { color: #2e7d32; }
-@keyframes alertPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.35); }
-  50% { box-shadow: 0 0 0 6px rgba(229, 57, 53, 0); }
-}
-
