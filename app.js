@@ -129,18 +129,79 @@ async function loadTodos() {
 
   el.querySelectorAll(".done-check").forEach((cb) => {
     cb.addEventListener("change", async (e) => {
-      if (!confirm("確定要標記完成嗎？完成後會直接刪除這筆待辦。")) {
+      if (!confirm("確定要標記完成嗎？（之後可在已完成清單復原）")) {
         cb.checked = false;
         return;
       }
       const card = e.target.closest(".card");
       const id = card.dataset.id;
       cb.disabled = true;
-      await sb.from("todos").delete().eq("id", id);
+      await sb.from("todos").update({ done: true, updated_at: new Date().toISOString() }).eq("id", id);
       loadTodos();
+      loadDoneTodos();
     });
   });
 }
+
+// ── 已完成待辦清單（可復原/永久刪除） ─────────────────────
+async function loadDoneTodos() {
+  const el = document.getElementById("todoDoneList");
+  if (el.classList.contains("hidden")) return;
+
+  const { data, error } = await sb
+    .from("todos")
+    .select("*")
+    .eq("done", true)
+    .order("updated_at", { ascending: false })
+    .limit(30);
+
+  if (error) {
+    el.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  if (!data.length) {
+    el.innerHTML = `<div class="empty">還沒有已完成的待辦</div>`;
+    return;
+  }
+
+  el.innerHTML = data.map((t) => `
+    <div class="card" data-id="${t.id}">
+      <div class="content">
+        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="meta">完成於 ${fmtTime(t.updated_at)}</div>
+      </div>
+      <button class="undo-btn">復原</button>
+      <button class="del-btn">刪除</button>
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".undo-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.closest(".card").dataset.id;
+      btn.disabled = true;
+      await sb.from("todos").update({ done: false, updated_at: new Date().toISOString() }).eq("id", id);
+      loadTodos();
+      loadDoneTodos();
+    });
+  });
+
+  el.querySelectorAll(".del-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      if (!confirm("確定要永久刪除嗎？刪除後無法復原。")) return;
+      const id = e.target.closest(".card").dataset.id;
+      btn.disabled = true;
+      await sb.from("todos").delete().eq("id", id);
+      loadDoneTodos();
+    });
+  });
+}
+
+document.getElementById("todoHistoryToggle").addEventListener("click", (e) => {
+  const list = document.getElementById("todoDoneList");
+  const hidden = list.classList.toggle("hidden");
+  e.target.textContent = hidden ? "已完成清單 ▾" : "已完成清單 ▴";
+  if (!hidden) loadDoneTodos();
+});
 
 function showTodoEdit(todo) {
   document.getElementById("todoEditForm").dataset.id = todo.id;
@@ -263,6 +324,12 @@ document.getElementById("categoryForm").addEventListener("submit", async (e) => 
 
 document.getElementById("noteCategoryFilter").addEventListener("change", loadNotes);
 
+let noteSearchTimer;
+document.getElementById("noteSearchInput").addEventListener("input", () => {
+  clearTimeout(noteSearchTimer);
+  noteSearchTimer = setTimeout(loadNotes, 300);
+});
+
 document.getElementById("categoryManageToggle").addEventListener("click", (e) => {
   const list = document.getElementById("categoryManageList");
   const hidden = list.classList.toggle("hidden");
@@ -277,6 +344,9 @@ async function loadNotes() {
   const categoryId = document.getElementById("noteCategoryFilter").value;
   let query = sb.from("notes").select("*").order("created_at", { ascending: false }).limit(30);
   query = categoryId ? query.eq("category_id", categoryId) : query;
+  // ponytail: 逗號/括號是 PostgREST or 語法保留字，直接換成空白，不做完整跳脫
+  const keyword = document.getElementById("noteSearchInput").value.trim().replace(/[,()]/g, " ").trim();
+  if (keyword) query = query.or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`);
   const { data, error } = await query;
 
   if (error) {
@@ -569,7 +639,7 @@ setInterval(refreshAll, REFRESH_INTERVAL_MS);
 
 // 待辦即時同步：外部訊息（如異常監控軟件）一寫入就刷新，不用等 30 秒輪詢或手動更新
 sb.channel("todos-live")
-  .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => loadTodos())
+  .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => { loadTodos(); loadDoneTodos(); })
   .subscribe();
 
 if ("serviceWorker" in navigator) {

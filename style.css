@@ -309,6 +309,7 @@ main {
   resize: vertical;
 }
 
+#noteSearchInput,
 #noteCategoryFilter {
   background: var(--card);
   border: 1px solid var(--border);

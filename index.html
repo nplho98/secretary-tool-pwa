@@ -43,6 +43,8 @@
         <button id="todoAddBtn" type="submit">新增</button>
       </form>
       <div id="todosList" class="list"></div>
+      <button id="todoHistoryToggle" type="button" class="back-btn" style="padding-top:12px;">已完成清單 ▾</button>
+      <div id="todoDoneList" class="list hidden"></div>
     </div>
     <div id="todoEditView" class="hidden">
       <button id="todoBackBtn" class="back-btn">← 返回</button>
@@ -74,6 +76,7 @@
       </form>
       <button id="categoryManageToggle" type="button" class="back-btn">管理分類 ▾</button>
       <div id="categoryManageList" class="category-list hidden"></div>
+      <input id="noteSearchInput" type="search" placeholder="搜尋筆記（標題或內容）…" autocomplete="off">
       <select id="noteCategoryFilter">
         <option value="">顯示全部分類</option>
       </select>
