@@ -1,0 +1,23 @@
+name: keepalive
+
+# Supabase 免費方案連續 7 天無請求就暫停專案，暫停後不會自己恢復。
+# 這個排程每天打一次 REST API，讓活躍度與「Boss 有沒有開電腦」脫鉤。
+# ponytail: 只打一張表、不留紀錄。GitHub 會停用「repo 連續 60 天無活動」的排程
+#           workflow，所以下面保留 workflow_dispatch，真被停用時手動按一次即可重新啟用。
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # UTC 03:00 = 台灣 11:00
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://pbyopyfullvyoviaugmf.supabase.co/rest/v1/todos?select=id&limit=1" \
+            -H "apikey: sb_publishable_tnJNdh3XRVaZW6n-r3OXcA_2y6hZACa")
+          echo "HTTP $code"
+          test "$code" = "200"
