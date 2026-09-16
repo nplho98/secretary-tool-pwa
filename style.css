@@ -576,8 +576,25 @@ main {
   margin-top: 8px;
 }
 
+#summaryToNoteRow .summary-note-title-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 #summaryToNoteRow input {
   margin-bottom: 8px;
+}
+
+#summaryToNoteRow #summaryNoteTitle {
+  border-color: #aeb5c0;
+}
+
+#summaryToNoteRow #summaryNoteTitle::placeholder {
+  color: #626b78;
+  opacity: 1;
 }
 
 @media (max-width: 600px) {

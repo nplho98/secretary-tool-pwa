@@ -887,7 +887,9 @@ document.getElementById("summaryRemoveBtn").addEventListener("click", async () =
   const selected = [...document.querySelectorAll("#summaryCards .summary-check:checked")]
     .map((checkbox) => Number(checkbox.value));
   if (!selected.length) return;
-  if (!confirm(`確定要移除勾選的 ${selected.length} 則嗎？`)) return;
+  if (!confirm(`確定要移除勾選的 ${selected.length} 則嗎？
+
+這會直接從資料庫刪除，電腦與手機兩邊都會消失，無法復原。`)) return;
 
   const selectedSet = new Set(selected);
   const remaining = summaryEntriesCache.filter((_, index) => !selectedSet.has(index));
@@ -903,7 +905,9 @@ document.getElementById("summaryRemoveBtn").addEventListener("click", async () =
 
 document.getElementById("summaryClearBtn").addEventListener("click", async () => {
   if (!selectedSummaryProject) return;
-  if (!confirm("確定要刪除嗎？")) return;
+  if (!confirm(`確定要清空「${selectedSummaryProject}」的全部內容嗎？
+
+這會直接從資料庫刪除，電腦與手機兩邊都會消失，無法復原。`)) return;
   await sb.from("summary_projects").update({
     content: null,
     updated_at: new Date().toISOString(),
