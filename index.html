@@ -111,6 +111,8 @@
       <select id="summaryProjectSelect">
         <option value="">（尚無專案）</option>
       </select>
+      <button id="summaryProjectAddBtn" type="button" class="summary-project-btn summary-project-add-btn">新增</button>
+      <button id="summaryProjectDeleteBtn" type="button" class="summary-project-btn summary-project-delete-btn">刪除</button>
       <label class="summary-receive-label">
         <input id="summaryReceiveToggle" type="checkbox">
         接收終端機對話
@@ -119,7 +121,6 @@
     <div class="list">
       <div class="card">
         <div class="content">
-          <div class="title">待整理內容</div>
           <textarea id="summaryInput" rows="4" placeholder="貼上要整理的資料…"></textarea>
           <div id="summaryCards" class="summary-cards"></div>
           <div class="summary-actions">

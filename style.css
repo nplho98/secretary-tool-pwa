@@ -121,6 +121,26 @@ main {
   box-shadow: var(--shadow);
 }
 
+.summary-project-btn {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 9px;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15);
+}
+
+.summary-project-add-btn {
+  background: #1565c0;
+}
+
+.summary-project-delete-btn {
+  background: var(--danger);
+}
+
 .summary-receive-label {
   display: flex;
   align-items: center;

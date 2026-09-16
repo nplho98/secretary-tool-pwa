@@ -742,6 +742,50 @@ document.getElementById("summaryProjectSelect").addEventListener("change", (e) =
   renderSummaryProject(project, true);
 });
 
+document.getElementById("summaryProjectAddBtn").addEventListener("click", async () => {
+  const projectName = prompt("輸入專案資料夾名稱，要與電腦上的資料夾名完全一致：");
+  if (projectName === null) return;
+  const trimmedName = projectName.trim();
+  if (!trimmedName) return;
+  if (summaryProjectsCache.some((item) => item.project === trimmedName)) {
+    alert("這個專案已經在清單裡了");
+    return;
+  }
+
+  const { error } = await sb.from("summary_projects").insert({
+    project: trimmedName,
+    receive: false,
+    content: null,
+  });
+  if (error) {
+    alert(`新增專案失敗：${error.message}`);
+    return;
+  }
+
+  selectedSummaryProject = trimmedName;
+  await loadSummary();
+  alert(`已新增專案「${trimmedName}」。
+
+名字必須與電腦上的資料夾名完全一致，否則收不到對話也不會有錯誤訊息。`);
+});
+
+document.getElementById("summaryProjectDeleteBtn").addEventListener("click", async () => {
+  if (!selectedSummaryProject) return;
+  const projectName = selectedSummaryProject;
+  if (!confirm(`確定要刪除專案「${projectName}」嗎？
+
+這個專案底下的所有對話會一起從資料庫刪除，電腦與手機兩邊都會消失，無法復原。`)) return;
+
+  const { error } = await sb.from("summary_projects").delete().eq("project", projectName);
+  if (error) {
+    alert(`刪除專案失敗：${error.message}`);
+    return;
+  }
+
+  selectedSummaryProject = "";
+  await loadSummary();
+});
+
 document.getElementById("summaryReceiveToggle").addEventListener("change", async (e) => {
   if (!selectedSummaryProject) return;
   const updatedAt = new Date().toISOString();
