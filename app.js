@@ -444,6 +444,7 @@ let selectedSummaryProject = "";
 let summaryEntriesCache = [];
 let summaryResultText = "";
 let summaryInputSavePromise = Promise.resolve();
+let summaryRequestTimer = null;
 
 function parseSummaryContent(content) {
   const text = typeof content === "string" ? content : "";
@@ -652,12 +653,8 @@ function setSummaryControlsDisabled(disabled) {
   document.getElementById("summaryProjectSelect").disabled = disabled;
   document.getElementById("summaryReceiveToggle").disabled = disabled;
   document.getElementById("summaryInput").disabled = disabled;
-  document.getElementById("summaryBtn").disabled = disabled;
   document.getElementById("summaryRemoveBtn").disabled = disabled;
   document.getElementById("summaryClearBtn").disabled = disabled;
-  document.getElementById("summaryNoteTitle").disabled = disabled;
-  document.getElementById("summaryNoteCategorySelect").disabled = disabled;
-  document.getElementById("summaryToNoteBtn").disabled = disabled;
 }
 
 function renderSummaryProject(project, forceInput = false) {
@@ -669,7 +666,6 @@ function renderSummaryProject(project, forceInput = false) {
     input.value = "";
     document.getElementById("summaryReceiveToggle").checked = false;
     renderSummaryCards("");
-    clearSummaryResult();
     return;
   }
 
@@ -681,11 +677,6 @@ function renderSummaryProject(project, forceInput = false) {
 }
 
 async function loadSummaryRequest() {
-  if (!selectedSummaryProject) {
-    clearSummaryResult();
-    return;
-  }
-
   const { data: sumData } = await sb
     .from("summary_requests")
     .select("content,result,status")
@@ -696,7 +687,9 @@ async function loadSummaryRequest() {
     const done = sumData.status === "done";
     renderSummaryResult(done ? (sumData.result || "") : "");
     document.getElementById("summaryToNoteRow").classList.toggle("hidden", !done);
-    if (!done) document.getElementById("summaryToNoteBtn").disabled = true;
+    document.getElementById("summaryToNoteBtn").disabled = !done || !document.getElementById("summaryNoteTitle").value.trim();
+  } else {
+    clearSummaryResult();
   }
 }
 
@@ -727,7 +720,6 @@ async function loadSummary() {
     : "<option value=\"\">（尚無專案）</option>";
   select.value = selectedSummaryProject;
   renderSummaryProject(project, selectionChanged);
-  await loadSummaryRequest();
 }
 
 document.getElementById("briefingTime").addEventListener("change", async (e) => {
@@ -748,7 +740,6 @@ document.getElementById("summaryProjectSelect").addEventListener("change", (e) =
   selectedSummaryProject = e.target.value;
   const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject) || null;
   renderSummaryProject(project, true);
-  clearSummaryResult();
 });
 
 document.getElementById("summaryReceiveToggle").addEventListener("change", async (e) => {
@@ -801,10 +792,10 @@ document.getElementById("summaryInput").addEventListener("change", async (e) => 
 
 document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   const btn = e.target;
-  if (!selectedSummaryProject) return;
-  await summaryInputSavePromise;
-  const content = formatSummaryRequestContent(summaryEntriesCache);
+  const input = document.getElementById("summaryRequestInput");
+  const content = input.value.trim();
   if (!content) return;
+  if (summaryRequestTimer) clearInterval(summaryRequestTimer);
   btn.disabled = true;
   btn.textContent = "整理中…";
   renderSummaryResult("");
@@ -818,7 +809,7 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   }).eq("id", 1);
 
   const requestedAt = Date.now();
-  const timer = setInterval(async () => {
+  summaryRequestTimer = setInterval(async () => {
     const { data } = await sb
       .from("summary_requests")
       .select("status,result")
@@ -826,7 +817,8 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       .maybeSingle();
 
     if (data && data.status === "done") {
-      clearInterval(timer);
+      clearInterval(summaryRequestTimer);
+      summaryRequestTimer = null;
       btn.disabled = false;
       btn.textContent = "整理重點";
       renderSummaryResult(data.result || "");
@@ -834,12 +826,14 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       document.getElementById("summaryToNoteBtn").disabled = true;
       document.getElementById("summaryToNoteRow").classList.remove("hidden");
     } else if (data && data.status === "error") {
-      clearInterval(timer);
+      clearInterval(summaryRequestTimer);
+      summaryRequestTimer = null;
       btn.disabled = false;
       btn.textContent = "整理重點";
       renderSummaryResult("整理失敗，請稍後再試");
     } else if (Date.now() - requestedAt > 60000) {
-      clearInterval(timer);
+      clearInterval(summaryRequestTimer);
+      summaryRequestTimer = null;
       btn.disabled = false;
       btn.textContent = "整理重點";
       renderSummaryResult("整理逾時，請確認秘書工具是否在執行");
@@ -859,14 +853,7 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   if (!title || !content) return;
   btn.disabled = true;
   await sb.from("notes").insert({ title, content, category_id, source: "mobile" });
-  await sb.from("summary_projects").update({
-    content: null,
-    updated_at: new Date().toISOString(),
-  }).eq("project", selectedSummaryProject);
-  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
-  if (project) project.content = null;
-  document.getElementById("summaryInput").value = "";
-  renderSummaryCards("");
+  document.getElementById("summaryRequestInput").value = "";
   renderSummaryResult("");
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryNoteCategorySelect").value = "";
@@ -880,6 +867,21 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   }).eq("id", 1);
   btn.textContent = "已新增";
   setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
+});
+
+document.getElementById("summaryPageClearBtn").addEventListener("click", async () => {
+  if (summaryRequestTimer) {
+    clearInterval(summaryRequestTimer);
+    summaryRequestTimer = null;
+  }
+  document.getElementById("summaryRequestInput").value = "";
+  clearSummaryResult();
+  await sb.from("summary_requests").update({
+    content: null,
+    result: null,
+    status: "idle",
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
 });
 
 document.getElementById("summaryRemoveBtn").addEventListener("click", async () => {
@@ -916,17 +918,6 @@ document.getElementById("summaryClearBtn").addEventListener("click", async () =>
   if (project) project.content = null;
   document.getElementById("summaryInput").value = "";
   renderSummaryCards("");
-  renderSummaryResult("");
-  document.getElementById("summaryNoteTitle").value = "";
-  document.getElementById("summaryNoteCategorySelect").value = "";
-  document.getElementById("summaryToNoteBtn").disabled = true;
-  document.getElementById("summaryToNoteRow").classList.add("hidden");
-  await sb.from("summary_requests").update({
-    content: null,
-    result: null,
-    status: "idle",
-    updated_at: new Date().toISOString(),
-  }).eq("id", 1);
 });
 
 document.getElementById("instantBriefingBtn").addEventListener("click", async (e) => {
@@ -967,7 +958,8 @@ const loaders = {
   briefing: loadBriefing,
   todos: loadTodos,
   notes: () => { loadCategories().then(loadNotes); },
-  summary: () => { loadCategories(); loadSummary(); },
+  terminal: loadSummary,
+  summary: () => { loadCategories(); loadSummaryRequest(); },
   settings: loadSettings,
 };
 
@@ -993,7 +985,10 @@ document.getElementById("refreshBtn").addEventListener("animationend", (e) => {
 });
 
 function refreshAll() {
-  Object.values(loaders).forEach((fn) => fn());
+  Object.entries(loaders).forEach(([name, fn]) => {
+    if (name === "terminal" && document.getElementById("tab-summary").classList.contains("active")) return;
+    fn();
+  });
 }
 
 // ── Init ────────────────────────────────────────────────────
@@ -1007,7 +1002,9 @@ sb.channel("todos-live")
   .subscribe();
 
 sb.channel("summary-live")
-  .on("postgres_changes", { event: "*", schema: "public", table: "summary_projects" }, () => { loadSummary(); })
+  .on("postgres_changes", { event: "*", schema: "public", table: "summary_projects" }, () => {
+    if (document.getElementById("tab-terminal").classList.contains("active")) loadSummary();
+  })
   .subscribe();
 
 if ("serviceWorker" in navigator) {

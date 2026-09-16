@@ -104,8 +104,8 @@
     </div>
   </section>
 
-  <section id="tab-summary" class="tab">
-    <h2>重點整理</h2>
+  <section id="tab-terminal" class="tab">
+    <h2>終端機</h2>
     <div class="summary-toolbar">
       <label for="summaryProjectSelect">專案：</label>
       <select id="summaryProjectSelect">
@@ -116,17 +116,32 @@
         接收終端機對話
       </label>
     </div>
+    <div class="list">
+      <div class="card">
+        <div class="content">
+          <div class="title">待整理內容</div>
+          <textarea id="summaryInput" rows="4" placeholder="貼上要整理的資料…"></textarea>
+          <div id="summaryCards" class="summary-cards"></div>
+          <div class="summary-actions">
+            <button id="summaryRemoveBtn" type="button" class="btn-block btn-danger">移除勾選</button>
+            <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-summary" class="tab">
+    <h2>重點整理</h2>
     <div class="summary-grid">
       <div class="list">
         <div class="card">
           <div class="content">
             <div class="title">待整理內容</div>
-            <textarea id="summaryInput" rows="4" placeholder="貼上要整理的資料…"></textarea>
-            <div id="summaryCards" class="summary-cards"></div>
+            <textarea id="summaryRequestInput" rows="6" placeholder="貼上要整理的資料…"></textarea>
             <div class="summary-actions">
               <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
-              <button id="summaryRemoveBtn" type="button" class="btn-block btn-danger">移除勾選</button>
-              <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
+              <button id="summaryPageClearBtn" type="button" class="btn-block btn-danger">清空</button>
             </div>
           </div>
         </div>
@@ -175,6 +190,7 @@
   <button class="tab-btn active" data-tab="briefing">晨報</button>
   <button class="tab-btn" data-tab="todos">待辦</button>
   <button class="tab-btn" data-tab="notes">筆記</button>
+  <button class="tab-btn" data-tab="terminal">終端機</button>
   <button class="tab-btn" data-tab="summary">重點整理</button>
   <button class="tab-btn" data-tab="settings">設定</button>
 </nav>
