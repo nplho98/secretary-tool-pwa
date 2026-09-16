@@ -104,6 +104,47 @@
     </div>
   </section>
 
+  <section id="tab-summary" class="tab">
+    <h2>重點整理</h2>
+    <div class="summary-toolbar">
+      <label for="summaryProjectSelect">專案：</label>
+      <select id="summaryProjectSelect">
+        <option value="">（尚無專案）</option>
+      </select>
+      <label class="summary-receive-label">
+        <input id="summaryReceiveToggle" type="checkbox">
+        接收終端機對話
+      </label>
+    </div>
+    <div class="summary-grid">
+      <div class="list">
+        <div class="card">
+          <div class="content">
+            <div class="title">待整理內容</div>
+            <textarea id="summaryInput" rows="18" placeholder="貼上要整理的資料…"></textarea>
+            <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
+            <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
+          </div>
+        </div>
+      </div>
+      <div class="list">
+        <div class="card">
+          <div class="content">
+            <div class="title">整理重點後</div>
+            <div id="summaryResult" class="note-detail-content"></div>
+            <div id="summaryToNoteRow" class="hidden">
+              <input id="summaryNoteTitle" type="text" placeholder="筆記標題" autocomplete="off">
+              <select id="summaryNoteCategorySelect">
+                <option value="">未分類</option>
+              </select>
+              <button id="summaryToNoteBtn" type="button" class="btn-block" disabled>新增到筆記</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="tab-settings" class="tab">
     <h2>每日晨報設定</h2>
     <div class="list">
@@ -122,25 +163,6 @@
       </div>
     </div>
 
-    <h2>重點整理</h2>
-    <div class="list">
-      <div class="card">
-        <div class="content">
-          <div class="title">資料重點整理</div>
-          <textarea id="summaryInput" rows="6" placeholder="貼上要整理的資料…"></textarea>
-          <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
-          <div id="summaryResult" class="note-detail-content"></div>
-          <div id="summaryToNoteRow" class="hidden">
-            <input id="summaryNoteTitle" type="text" placeholder="筆記標題" autocomplete="off">
-            <select id="summaryNoteCategorySelect">
-              <option value="">未分類</option>
-            </select>
-            <button id="summaryToNoteBtn" type="button" class="btn-block" disabled>新增到筆記</button>
-          </div>
-          <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
-        </div>
-      </div>
-    </div>
   </section>
 </main>
 
@@ -148,6 +170,7 @@
   <button class="tab-btn active" data-tab="briefing">晨報</button>
   <button class="tab-btn" data-tab="todos">待辦</button>
   <button class="tab-btn" data-tab="notes">筆記</button>
+  <button class="tab-btn" data-tab="summary">重點整理</button>
   <button class="tab-btn" data-tab="settings">設定</button>
 </nav>
 

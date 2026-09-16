@@ -439,6 +439,10 @@ document.getElementById("noteForm").addEventListener("submit", async (e) => {
 });
 
 // ── 設定 (secretary_settings) ──────────────────────────────
+let summaryProjectsCache = [];
+let selectedSummaryProject = "";
+let summaryInputSnapshot = null;
+
 async function loadSettings() {
   const { data, error } = await sb
     .from("secretary_settings")
@@ -450,6 +454,50 @@ async function loadSettings() {
     document.getElementById("briefingTime").value = data.briefing_time || "08:00";
     document.getElementById("briefingTopics").value = data.briefing_topics || "";
   }
+}
+
+function clearSummaryResult() {
+  document.getElementById("summaryResult").textContent = "";
+  document.getElementById("summaryNoteTitle").value = "";
+  document.getElementById("summaryNoteCategorySelect").value = "";
+  document.getElementById("summaryToNoteBtn").disabled = true;
+  document.getElementById("summaryToNoteRow").classList.add("hidden");
+}
+
+function setSummaryControlsDisabled(disabled) {
+  document.getElementById("summaryProjectSelect").disabled = disabled;
+  document.getElementById("summaryReceiveToggle").disabled = disabled;
+  document.getElementById("summaryInput").disabled = disabled;
+  document.getElementById("summaryBtn").disabled = disabled;
+  document.getElementById("summaryClearBtn").disabled = disabled;
+  document.getElementById("summaryNoteTitle").disabled = disabled;
+  document.getElementById("summaryNoteCategorySelect").disabled = disabled;
+  document.getElementById("summaryToNoteBtn").disabled = disabled;
+}
+
+function renderSummaryProject(project, forceInput = false) {
+  const input = document.getElementById("summaryInput");
+  const hasProject = Boolean(project);
+  setSummaryControlsDisabled(!hasProject);
+
+  if (!hasProject) {
+    input.value = "";
+    document.getElementById("summaryReceiveToggle").checked = false;
+    clearSummaryResult();
+    return;
+  }
+
+  if (forceInput || document.activeElement !== input) {
+    input.value = project.content || "";
+  }
+  document.getElementById("summaryReceiveToggle").checked = Boolean(project.receive);
+}
+
+async function loadSummaryRequest() {
+  if (!selectedSummaryProject) {
+    clearSummaryResult();
+    return;
+  }
 
   const { data: sumData } = await sb
     .from("summary_requests")
@@ -458,11 +506,41 @@ async function loadSettings() {
     .maybeSingle();
 
   if (sumData) {
-    document.getElementById("summaryInput").value = sumData.content || "";
     const done = sumData.status === "done";
     document.getElementById("summaryResult").textContent = done ? (sumData.result || "") : "";
     document.getElementById("summaryToNoteRow").classList.toggle("hidden", !done);
+    if (!done) document.getElementById("summaryToNoteBtn").disabled = true;
   }
+}
+
+async function loadSummary() {
+  const { data, error } = await sb
+    .from("summary_projects")
+    .select("project,content,receive,updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    summaryProjectsCache = [];
+    selectedSummaryProject = "";
+    const select = document.getElementById("summaryProjectSelect");
+    select.innerHTML = "<option value=\"\">（尚無專案）</option>";
+    renderSummaryProject(null, true);
+    return;
+  }
+
+  const previousProject = selectedSummaryProject || document.getElementById("summaryProjectSelect").value;
+  summaryProjectsCache = data || [];
+  const project = summaryProjectsCache.find((item) => item.project === previousProject) || summaryProjectsCache[0] || null;
+  const selectionChanged = (project?.project || "") !== selectedSummaryProject;
+  selectedSummaryProject = project?.project || "";
+
+  const select = document.getElementById("summaryProjectSelect");
+  select.innerHTML = summaryProjectsCache.length
+    ? summaryProjectsCache.map((item) => `<option value="${escapeHtml(item.project)}">${escapeHtml(item.project)}</option>`).join("")
+    : "<option value=\"\">（尚無專案）</option>";
+  select.value = selectedSummaryProject;
+  renderSummaryProject(project, selectionChanged);
+  await loadSummaryRequest();
 }
 
 document.getElementById("briefingTime").addEventListener("change", async (e) => {
@@ -479,8 +557,62 @@ document.getElementById("briefingTopics").addEventListener("change", async (e) =
   }).eq("id", 1);
 });
 
+document.getElementById("summaryProjectSelect").addEventListener("change", (e) => {
+  selectedSummaryProject = e.target.value;
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject) || null;
+  summaryInputSnapshot = null;
+  renderSummaryProject(project, true);
+  clearSummaryResult();
+});
+
+document.getElementById("summaryReceiveToggle").addEventListener("change", async (e) => {
+  if (!selectedSummaryProject) return;
+  const updatedAt = new Date().toISOString();
+  await sb.from("summary_projects").update({
+    receive: e.target.checked,
+    updated_at: updatedAt,
+  }).eq("project", selectedSummaryProject);
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
+  if (project) {
+    project.receive = e.target.checked;
+    project.updated_at = updatedAt;
+  }
+});
+
+document.getElementById("summaryInput").addEventListener("focus", (e) => {
+  summaryInputSnapshot = e.target.value;
+});
+
+document.getElementById("summaryInput").addEventListener("change", async (e) => {
+  if (!selectedSummaryProject) return;
+  const snapshot = summaryInputSnapshot ?? e.target.value;
+  const { data } = await sb
+    .from("summary_projects")
+    .select("content")
+    .eq("project", selectedSummaryProject)
+    .maybeSingle();
+  const databaseContent = data?.content || "";
+  let content = e.target.value;
+  if (databaseContent.startsWith(snapshot) && databaseContent.length > snapshot.length) {
+    content += databaseContent.slice(snapshot.length);
+  }
+  const updatedAt = new Date().toISOString();
+  await sb.from("summary_projects").update({
+    content,
+    updated_at: updatedAt,
+  }).eq("project", selectedSummaryProject);
+  e.target.value = content;
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
+  if (project) {
+    project.content = content;
+    project.updated_at = updatedAt;
+  }
+  summaryInputSnapshot = null;
+});
+
 document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   const btn = e.target;
+  if (!selectedSummaryProject) return;
   const content = document.getElementById("summaryInput").value.trim();
   if (!content) return;
   btn.disabled = true;
@@ -537,10 +669,17 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   if (!title || !content) return;
   btn.disabled = true;
   await sb.from("notes").insert({ title, content, category_id, source: "mobile" });
+  await sb.from("summary_projects").update({
+    content: null,
+    updated_at: new Date().toISOString(),
+  }).eq("project", selectedSummaryProject);
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
+  if (project) project.content = null;
   document.getElementById("summaryInput").value = "";
   document.getElementById("summaryResult").textContent = "";
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryNoteCategorySelect").value = "";
+  document.getElementById("summaryToNoteBtn").disabled = true;
   document.getElementById("summaryToNoteRow").classList.add("hidden");
   await sb.from("summary_requests").update({
     content: null,
@@ -553,10 +692,19 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
 });
 
 document.getElementById("summaryClearBtn").addEventListener("click", async () => {
+  if (!selectedSummaryProject) return;
   if (!confirm("確定要刪除嗎？")) return;
+  await sb.from("summary_projects").update({
+    content: null,
+    updated_at: new Date().toISOString(),
+  }).eq("project", selectedSummaryProject);
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
+  if (project) project.content = null;
   document.getElementById("summaryInput").value = "";
   document.getElementById("summaryResult").textContent = "";
   document.getElementById("summaryNoteTitle").value = "";
+  document.getElementById("summaryNoteCategorySelect").value = "";
+  document.getElementById("summaryToNoteBtn").disabled = true;
   document.getElementById("summaryToNoteRow").classList.add("hidden");
   await sb.from("summary_requests").update({
     content: null,
@@ -604,7 +752,8 @@ const loaders = {
   briefing: loadBriefing,
   todos: loadTodos,
   notes: () => { loadCategories().then(loadNotes); },
-  settings: () => { loadCategories(); loadSettings(); },
+  summary: () => { loadCategories(); loadSummary(); },
+  settings: loadSettings,
 };
 
 function switchTab(name) {
@@ -640,6 +789,10 @@ setInterval(refreshAll, REFRESH_INTERVAL_MS);
 // 待辦即時同步：外部訊息（如異常監控軟件）一寫入就刷新，不用等 30 秒輪詢或手動更新
 sb.channel("todos-live")
   .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => { loadTodos(); loadDoneTodos(); })
+  .subscribe();
+
+sb.channel("summary-live")
+  .on("postgres_changes", { event: "*", schema: "public", table: "summary_projects" }, () => { loadSummary(); })
   .subscribe();
 
 if ("serviceWorker" in navigator) {
