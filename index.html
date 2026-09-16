@@ -121,9 +121,13 @@
         <div class="card">
           <div class="content">
             <div class="title">待整理內容</div>
-            <textarea id="summaryInput" rows="18" placeholder="貼上要整理的資料…"></textarea>
-            <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
-            <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
+            <textarea id="summaryInput" rows="4" placeholder="貼上要整理的資料…"></textarea>
+            <div id="summaryCards" class="summary-cards"></div>
+            <div class="summary-actions">
+              <button id="summaryBtn" type="button" class="btn-block btn-blue">整理重點</button>
+              <button id="summaryRemoveBtn" type="button" class="btn-block btn-danger">移除勾選</button>
+              <button id="summaryClearBtn" type="button" class="btn-block btn-danger">刪除已輸入訊息</button>
+            </div>
           </div>
         </div>
       </div>

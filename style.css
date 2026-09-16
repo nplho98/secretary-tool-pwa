@@ -144,6 +144,86 @@ main {
   min-width: 0;
 }
 
+.summary-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.summary-entry-card {
+  max-height: 240px;
+  overflow: auto;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.summary-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.summary-check {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.summary-entry-time {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summary-question,
+.summary-answer {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.summary-question {
+  background: #f7e9ef;
+}
+
+.summary-answer {
+  background: #fff;
+}
+
+.summary-entry-label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.summary-entry-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.summary-actions .btn-block {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  margin-top: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  white-space: normal;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -480,6 +560,16 @@ main {
   word-break: break-word;
   margin-top: 8px;
   font-size: 14px;
+}
+
+#summaryResult p {
+  margin: 0 0 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#summaryResult p:last-child {
+  margin-bottom: 0;
 }
 
 #summaryToNoteRow {

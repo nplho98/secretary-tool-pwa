@@ -441,7 +441,191 @@ document.getElementById("noteForm").addEventListener("submit", async (e) => {
 // ── 設定 (secretary_settings) ──────────────────────────────
 let summaryProjectsCache = [];
 let selectedSummaryProject = "";
-let summaryInputSnapshot = null;
+let summaryEntriesCache = [];
+let summaryResultText = "";
+let summaryInputSavePromise = Promise.resolve();
+
+function parseSummaryContent(content) {
+  const text = typeof content === "string" ? content : "";
+  if (!text.trim()) return [];
+
+  const headerPattern = /^@@ENTRY ([^\r\n]+)@@[ \t]*(?:\r?\n|$)/gm;
+  const headers = [...text.matchAll(headerPattern)];
+  if (!headers.length) {
+    return [{ timestamp: "", question: "", answer: text, legacy: true }];
+  }
+
+  const entries = headers.map((header, index) => {
+    const bodyStart = header.index + header[0].length;
+    const bodyEnd = index + 1 < headers.length ? headers[index + 1].index : text.length;
+    let body = text.slice(bodyStart, bodyEnd).replace(/(?:\r?\n)+$/, "");
+    const questionMarker = /^@@Q@@[ \t]*(?:\r?\n|$)/m.exec(body);
+    const answerMarker = /^@@A@@[ \t]*(?:\r?\n|$)/m.exec(body);
+    let question = "";
+    let answer = "";
+
+    if (questionMarker) {
+      const questionStart = questionMarker.index + questionMarker[0].length;
+      const questionEnd = answerMarker && answerMarker.index > questionMarker.index
+        ? answerMarker.index
+        : body.length;
+      question = body.slice(questionStart, questionEnd).replace(/(?:\r?\n)+$/, "");
+    }
+    if (answerMarker) {
+      const answerStart = answerMarker.index + answerMarker[0].length;
+      answer = body.slice(answerStart).replace(/(?:\r?\n)+$/, "");
+    } else if (!questionMarker) {
+      answer = body;
+    }
+
+    return { timestamp: header[1], question, answer };
+  });
+  const legacyPrefix = text.slice(0, headers[0].index).replace(/(?:\r?\n)+$/, "");
+  return legacyPrefix.trim()
+    ? [{ timestamp: "", question: "", answer: legacyPrefix, legacy: true }, ...entries]
+    : entries;
+}
+
+function serializeSummaryEntry(entry) {
+  if (entry.legacy || !entry.timestamp) return entry.answer || "";
+  const lines = [`@@ENTRY ${entry.timestamp}@@`];
+  if (entry.question) lines.push("@@Q@@", entry.question);
+  if (entry.answer) lines.push("@@A@@", entry.answer);
+  return lines.join("\n");
+}
+
+function serializeSummaryEntries(entries) {
+  return entries.map(serializeSummaryEntry).filter(Boolean).join("\n\n");
+}
+
+function localIsoSeconds(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function formatSummaryTime(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+    + `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function appendSummaryContent(oldContent, entry) {
+  if (!oldContent) return entry;
+  return oldContent.replace(/[\r\n]+$/, "") + "\n\n" + entry;
+}
+
+function formatSummaryRequestContent(entries) {
+  return entries.map((entry) => {
+    const lines = [];
+    const time = formatSummaryTime(entry.timestamp);
+    if (time) lines.push(`【${time}】`);
+    if (entry.question) lines.push(`問：${entry.question}`);
+    if (entry.answer) lines.push(`答：${entry.answer}`);
+    return lines.join("\n");
+  }).filter(Boolean).join("\n\n");
+}
+
+function renderSummaryCards(content) {
+  const container = document.getElementById("summaryCards");
+  summaryEntriesCache = parseSummaryContent(content);
+  container.replaceChildren();
+
+  [...summaryEntriesCache].map((entry, index) => ({ entry, index })).reverse().forEach(({ entry, index }) => {
+    const card = document.createElement("article");
+    card.className = "summary-entry-card";
+    card.dataset.entryIndex = String(index);
+
+    const header = document.createElement("div");
+    header.className = "summary-entry-header";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "summary-check";
+    checkbox.value = String(index);
+    checkbox.setAttribute("aria-label", "選取這則紀錄");
+    header.append(checkbox);
+    const time = formatSummaryTime(entry.timestamp);
+    if (time) {
+      const timeElement = document.createElement("time");
+      timeElement.className = "summary-entry-time";
+      timeElement.textContent = time;
+      header.append(timeElement);
+    }
+    card.append(header);
+
+    if (entry.question.trim()) {
+      const question = document.createElement("div");
+      question.className = "summary-question";
+      const label = document.createElement("span");
+      label.className = "summary-entry-label";
+      label.textContent = "問：";
+      const text = document.createElement("span");
+      text.className = "summary-entry-text";
+      text.textContent = entry.question;
+      question.append(label, text);
+      card.append(question);
+    }
+
+    if (entry.answer) {
+      const answer = document.createElement("div");
+      answer.className = "summary-answer";
+      const label = document.createElement("span");
+      label.className = "summary-entry-label";
+      label.textContent = "答：";
+      const text = document.createElement("span");
+      text.className = "summary-entry-text";
+      text.textContent = entry.answer;
+      answer.append(label, text);
+      card.append(answer);
+    }
+    container.append(card);
+  });
+
+  if (!summaryEntriesCache.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "尚無紀錄";
+    container.append(empty);
+  }
+}
+
+function renderSummaryResult(result) {
+  summaryResultText = String(result ?? "");
+  const container = document.getElementById("summaryResult");
+  container.replaceChildren();
+  summaryResultText.split(/\r?\n/).filter((line) => line.trim()).forEach((line) => {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = line;
+    container.append(paragraph);
+  });
+}
+
+function getSummaryResultText() {
+  return summaryResultText || [...document.querySelectorAll("#summaryResult p")]
+    .map((paragraph) => paragraph.textContent)
+    .join("\n");
+}
+
+window.__summarySelfTest = function __summarySelfTest() {
+  const source = "@@ENTRY 2026-09-16T11:15:03@@\n@@Q@@\n問題\n第二行\n@@A@@\n回答\n第二行\n\n@@ENTRY 2026-09-16T11:20:41@@\n@@A@@\n手動內容";
+  const entries = parseSummaryContent(source);
+  if (serializeSummaryEntries(entries) !== source) throw new Error("summary round-trip failed");
+  if (parseSummaryContent(serializeSummaryEntries(entries.slice(0, 1))).length !== 1) {
+    throw new Error("summary single-entry parse failed");
+  }
+  const legacy = "舊資料\n第二行";
+  if (parseSummaryContent(legacy).length !== 1 || parseSummaryContent(legacy)[0].answer !== legacy) {
+    throw new Error("summary legacy parse failed");
+  }
+  const mixed = appendSummaryContent(legacy, serializeSummaryEntry(entries[1]));
+  if (parseSummaryContent(mixed).length !== 2 || parseSummaryContent(mixed)[0].answer !== legacy) {
+    throw new Error("summary mixed legacy parse failed");
+  }
+  return "summary self-test passed";
+};
 
 async function loadSettings() {
   const { data, error } = await sb
@@ -457,7 +641,7 @@ async function loadSettings() {
 }
 
 function clearSummaryResult() {
-  document.getElementById("summaryResult").textContent = "";
+  renderSummaryResult("");
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryNoteCategorySelect").value = "";
   document.getElementById("summaryToNoteBtn").disabled = true;
@@ -469,6 +653,7 @@ function setSummaryControlsDisabled(disabled) {
   document.getElementById("summaryReceiveToggle").disabled = disabled;
   document.getElementById("summaryInput").disabled = disabled;
   document.getElementById("summaryBtn").disabled = disabled;
+  document.getElementById("summaryRemoveBtn").disabled = disabled;
   document.getElementById("summaryClearBtn").disabled = disabled;
   document.getElementById("summaryNoteTitle").disabled = disabled;
   document.getElementById("summaryNoteCategorySelect").disabled = disabled;
@@ -483,13 +668,15 @@ function renderSummaryProject(project, forceInput = false) {
   if (!hasProject) {
     input.value = "";
     document.getElementById("summaryReceiveToggle").checked = false;
+    renderSummaryCards("");
     clearSummaryResult();
     return;
   }
 
   if (forceInput || document.activeElement !== input) {
-    input.value = project.content || "";
+    input.value = "";
   }
+  renderSummaryCards(project.content || "");
   document.getElementById("summaryReceiveToggle").checked = Boolean(project.receive);
 }
 
@@ -507,7 +694,7 @@ async function loadSummaryRequest() {
 
   if (sumData) {
     const done = sumData.status === "done";
-    document.getElementById("summaryResult").textContent = done ? (sumData.result || "") : "";
+    renderSummaryResult(done ? (sumData.result || "") : "");
     document.getElementById("summaryToNoteRow").classList.toggle("hidden", !done);
     if (!done) document.getElementById("summaryToNoteBtn").disabled = true;
   }
@@ -560,7 +747,6 @@ document.getElementById("briefingTopics").addEventListener("change", async (e) =
 document.getElementById("summaryProjectSelect").addEventListener("change", (e) => {
   selectedSummaryProject = e.target.value;
   const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject) || null;
-  summaryInputSnapshot = null;
   renderSummaryProject(project, true);
   clearSummaryResult();
 });
@@ -579,45 +765,49 @@ document.getElementById("summaryReceiveToggle").addEventListener("change", async
   }
 });
 
-document.getElementById("summaryInput").addEventListener("focus", (e) => {
-  summaryInputSnapshot = e.target.value;
-});
-
 document.getElementById("summaryInput").addEventListener("change", async (e) => {
   if (!selectedSummaryProject) return;
-  const snapshot = summaryInputSnapshot ?? e.target.value;
-  const { data } = await sb
-    .from("summary_projects")
-    .select("content")
-    .eq("project", selectedSummaryProject)
-    .maybeSingle();
-  const databaseContent = data?.content || "";
-  let content = e.target.value;
-  if (databaseContent.startsWith(snapshot) && databaseContent.length > snapshot.length) {
-    content += databaseContent.slice(snapshot.length);
-  }
-  const updatedAt = new Date().toISOString();
-  await sb.from("summary_projects").update({
-    content,
-    updated_at: updatedAt,
-  }).eq("project", selectedSummaryProject);
-  e.target.value = content;
-  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
-  if (project) {
-    project.content = content;
-    project.updated_at = updatedAt;
-  }
-  summaryInputSnapshot = null;
+  const input = e.target;
+  const entryContent = input.value.trim();
+  if (!entryContent) return;
+  input.value = "";
+  const projectName = selectedSummaryProject;
+  summaryInputSavePromise = summaryInputSavePromise.then(async () => {
+    const { data } = await sb
+      .from("summary_projects")
+      .select("content")
+      .eq("project", projectName)
+      .maybeSingle();
+    const entry = serializeSummaryEntry({
+      timestamp: localIsoSeconds(),
+      question: "",
+      answer: entryContent,
+    });
+    const content = appendSummaryContent(data?.content || "", entry);
+    const updatedAt = new Date().toISOString();
+    await sb.from("summary_projects").update({
+      content,
+      updated_at: updatedAt,
+    }).eq("project", projectName);
+    const project = summaryProjectsCache.find((item) => item.project === projectName);
+    if (project) {
+      project.content = content;
+      project.updated_at = updatedAt;
+    }
+    if (selectedSummaryProject === projectName) renderSummaryCards(content);
+  });
+  await summaryInputSavePromise;
 });
 
 document.getElementById("summaryBtn").addEventListener("click", async (e) => {
   const btn = e.target;
   if (!selectedSummaryProject) return;
-  const content = document.getElementById("summaryInput").value.trim();
+  await summaryInputSavePromise;
+  const content = formatSummaryRequestContent(summaryEntriesCache);
   if (!content) return;
   btn.disabled = true;
   btn.textContent = "整理中…";
-  document.getElementById("summaryResult").textContent = "";
+  renderSummaryResult("");
   document.getElementById("summaryToNoteRow").classList.add("hidden");
 
   await sb.from("summary_requests").update({
@@ -639,7 +829,7 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "整理重點";
-      document.getElementById("summaryResult").textContent = data.result || "";
+      renderSummaryResult(data.result || "");
       document.getElementById("summaryNoteTitle").value = "";
       document.getElementById("summaryToNoteBtn").disabled = true;
       document.getElementById("summaryToNoteRow").classList.remove("hidden");
@@ -647,12 +837,12 @@ document.getElementById("summaryBtn").addEventListener("click", async (e) => {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "整理重點";
-      document.getElementById("summaryResult").textContent = "整理失敗，請稍後再試";
+      renderSummaryResult("整理失敗，請稍後再試");
     } else if (Date.now() - requestedAt > 60000) {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = "整理重點";
-      document.getElementById("summaryResult").textContent = "整理逾時，請確認秘書工具是否在執行";
+      renderSummaryResult("整理逾時，請確認秘書工具是否在執行");
     }
   }, 3000);
 });
@@ -664,7 +854,7 @@ document.getElementById("summaryNoteTitle").addEventListener("input", (e) => {
 document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) => {
   const btn = e.target;
   const title = document.getElementById("summaryNoteTitle").value.trim();
-  const content = document.getElementById("summaryResult").textContent.trim();
+  const content = getSummaryResultText().trim();
   const category_id = document.getElementById("summaryNoteCategorySelect").value || null;
   if (!title || !content) return;
   btn.disabled = true;
@@ -676,7 +866,8 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
   if (project) project.content = null;
   document.getElementById("summaryInput").value = "";
-  document.getElementById("summaryResult").textContent = "";
+  renderSummaryCards("");
+  renderSummaryResult("");
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryNoteCategorySelect").value = "";
   document.getElementById("summaryToNoteBtn").disabled = true;
@@ -691,6 +882,25 @@ document.getElementById("summaryToNoteBtn").addEventListener("click", async (e) 
   setTimeout(() => { btn.textContent = "新增到筆記"; }, 2000);
 });
 
+document.getElementById("summaryRemoveBtn").addEventListener("click", async () => {
+  if (!selectedSummaryProject) return;
+  const selected = [...document.querySelectorAll("#summaryCards .summary-check:checked")]
+    .map((checkbox) => Number(checkbox.value));
+  if (!selected.length) return;
+  if (!confirm(`確定要移除勾選的 ${selected.length} 則嗎？`)) return;
+
+  const selectedSet = new Set(selected);
+  const remaining = summaryEntriesCache.filter((_, index) => !selectedSet.has(index));
+  const content = serializeSummaryEntries(remaining);
+  await sb.from("summary_projects").update({
+    content: content || null,
+    updated_at: new Date().toISOString(),
+  }).eq("project", selectedSummaryProject);
+  const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
+  if (project) project.content = content || null;
+  renderSummaryCards(content);
+});
+
 document.getElementById("summaryClearBtn").addEventListener("click", async () => {
   if (!selectedSummaryProject) return;
   if (!confirm("確定要刪除嗎？")) return;
@@ -701,7 +911,8 @@ document.getElementById("summaryClearBtn").addEventListener("click", async () =>
   const project = summaryProjectsCache.find((item) => item.project === selectedSummaryProject);
   if (project) project.content = null;
   document.getElementById("summaryInput").value = "";
-  document.getElementById("summaryResult").textContent = "";
+  renderSummaryCards("");
+  renderSummaryResult("");
   document.getElementById("summaryNoteTitle").value = "";
   document.getElementById("summaryNoteCategorySelect").value = "";
   document.getElementById("summaryToNoteBtn").disabled = true;
