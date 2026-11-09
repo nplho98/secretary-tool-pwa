@@ -16,12 +16,14 @@ public class ReminderSyncJob extends JobService {
     private final Map<Integer,ReminderService.SpeechSession> speeches=new ConcurrentHashMap<>();
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     public static void request(Context c){
-        JobScheduler jobs=c.getSystemService(JobScheduler.class);
-        ComponentName name=new ComponentName(c,ReminderSyncJob.class);
-        if(jobs.getPendingJob(PERIODIC)==null)jobs.schedule(new JobInfo.Builder(PERIODIC,name).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setPeriodic(15*60*1000L).setPersisted(true).build());
-        if(jobs.getPendingJob(IMMEDIATE)==null)jobs.schedule(new JobInfo.Builder(IMMEDIATE,name).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setMinimumLatency(0).build());
+        try{
+            JobScheduler jobs=c.getSystemService(JobScheduler.class);
+            ComponentName name=new ComponentName(c,ReminderSyncJob.class);
+            if(jobs.getPendingJob(PERIODIC)==null)jobs.schedule(new JobInfo.Builder(PERIODIC,name).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setPeriodic(15*60*1000L).setPersisted(true).build());
+            if(jobs.getPendingJob(IMMEDIATE)==null)jobs.schedule(new JobInfo.Builder(IMMEDIATE,name).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setMinimumLatency(0).build());
+        }catch(Exception e){Log.e("Reminder","提醒同步排程失敗",e);}
     }
     public static final class Speech {
         public final String key,text;public final long occurs;
