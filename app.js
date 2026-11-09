@@ -629,17 +629,151 @@ window.__summarySelfTest = function __summarySelfTest() {
 };
 
 async function loadSettings() {
+  try {
   const { data, error } = await sb
     .from("secretary_settings")
-    .select("briefing_topics,briefing_time")
+    .select("briefing_topics,briefing_time,todo_lead_minutes")
     .eq("id", 1)
     .single();
 
-  if (!error) {
+  if (!error && data) {
     document.getElementById("briefingTime").value = data.briefing_time || "08:00";
     document.getElementById("briefingTopics").value = data.briefing_topics || "";
+    if (!todoLeadSaving && document.activeElement !== document.getElementById("todoLeadMinutes")) {
+      document.getElementById("todoLeadMinutes").value = String(data.todo_lead_minutes || 10);
+    }
+  } else if (error) {
+    // 舊資料庫尚未加提醒欄位時，晨報設定仍可獨立載入。
+    const fallback = await sb.from("secretary_settings").select("briefing_topics,briefing_time").eq("id", 1).single();
+    if (!fallback.error && fallback.data) {
+      document.getElementById("briefingTime").value = fallback.data.briefing_time || "08:00";
+      document.getElementById("briefingTopics").value = fallback.data.briefing_topics || "";
+    }
+    document.getElementById("todoLeadStatus").textContent = "待辦提醒設定讀取失敗";
+  }
+  } catch (error) {
+    document.getElementById("todoLeadStatus").textContent = "設定讀取失敗，請稍後再試";
   }
 }
+
+let meetingsLoading = false;
+let todoLeadSaving = false;
+function meetingEditing() {
+  const list = document.getElementById("meetingsList");
+  return list.contains(document.activeElement) || !!list.querySelector('[data-dirty="true"]');
+}
+
+function addMeetingCard(meeting = null) {
+  const list = document.getElementById("meetingsList");
+  list.querySelectorAll(".empty").forEach((el) => el.remove());
+  const card = document.createElement("div");
+  card.className = "card meeting-card";
+  card.dataset.dirty = meeting ? "false" : "true";
+  card.innerHTML = `<div class="content">
+    <label>名稱<input class="meeting-title" type="text" autocomplete="off"></label>
+    <label>頻率<select class="meeting-frequency"><option value="weekly">每週</option><option value="monthly">每月</option></select></label>
+    <div class="meeting-month-weeks hidden"><span>第幾個</span>${[[1,"第1個"],[2,"第2個"],[3,"第3個"],[4,"第4個"],[-1,"最後一個"]].map(([value,label]) => `<label><input type="checkbox" class="meeting-week" value="${value}">${label}</label>`).join("")}</div>
+    <div class="meeting-weekdays">${Array.from("一二三四五六日", (day, i) => `<label><input type="checkbox" class="meeting-day" value="${i + 1}">週${day}</label>`).join("")}</div>
+    <label>時間</label><div class="time-select-row">
+      <select class="meeting-ampm" aria-label="上午或下午"><option value="">--</option><option value="AM">上午</option><option value="PM">下午</option></select>
+      <select class="meeting-hour" aria-label="時"></select><select class="meeting-minute" aria-label="分"></select>
+    </div><label>提前分鐘 <select class="meeting-lead">${[5,10,15,30].map(n => `<option value="${n}">${n}</option>`).join("")}</select></label>
+    <label><input class="meeting-enabled" type="checkbox">啟用</label>
+    <div class="meeting-actions"><button type="button" class="meeting-save btn-blue">儲存</button><button type="button" class="meeting-delete del-btn">刪除</button></div>
+    <div class="meta meeting-status" role="status"></div></div>`;
+  const find = (selector) => card.querySelector(selector);
+  fillTimeSelect(find(".meeting-hour"), Array.from({length:12}, (_,i) => i+1), "時");
+  fillTimeSelect(find(".meeting-minute"), Array.from({length:60}, (_,i) => i), "分");
+  find(".meeting-title").value = meeting?.title || "";
+  find(".meeting-lead").value = String(meeting?.lead_minutes || 10);
+  find(".meeting-enabled").checked = meeting?.enabled ?? true;
+  const monthWeeks = meeting?.month_weeks || [];
+  find(".meeting-frequency").value = monthWeeks.length ? "monthly" : "weekly";
+  card.querySelectorAll(".meeting-week").forEach(el => { el.checked = monthWeeks.includes(Number(el.value)); });
+  const updateFrequency = () => {
+    find(".meeting-month-weeks").classList.toggle("hidden", find(".meeting-frequency").value !== "monthly");
+  };
+  find(".meeting-frequency").addEventListener("change", updateFrequency);
+  updateFrequency();
+  card.querySelectorAll(".meeting-day").forEach(el => { el.checked = (meeting?.weekdays || []).includes(Number(el.value)); });
+  if (meeting?.meeting_time) {
+    const [hour, minute] = meeting.meeting_time.split(":").map(Number);
+    find(".meeting-ampm").value = hour >= 12 ? "PM" : "AM";
+    find(".meeting-hour").value = String(hour % 12 || 12);
+    find(".meeting-minute").value = String(minute);
+  }
+  let id = meeting?.id;
+  card.addEventListener("input", () => { card.dataset.dirty = "true"; });
+  card.addEventListener("change", () => { card.dataset.dirty = "true"; });
+  find(".meeting-save").addEventListener("click", async () => {
+    const title = find(".meeting-title").value.trim();
+    const weekdays = [...card.querySelectorAll(".meeting-day:checked")].map(el => Number(el.value));
+    const monthly = find(".meeting-frequency").value === "monthly";
+    const month_weeks = monthly ? [...card.querySelectorAll(".meeting-week:checked")].map(el => Number(el.value)) : [];
+    if (monthly && !month_weeks.length) {
+      alert("請至少勾選第幾個");
+      return;
+    }
+    const ampm = find(".meeting-ampm").value, hour = find(".meeting-hour").value, minute = find(".meeting-minute").value;
+    if (!title || !weekdays.length || !ampm || !hour || minute === "") {
+      alert(!title ? "請輸入會議名稱" : !weekdays.length ? "請至少勾選一天" : "請完整選擇時間");
+      return;
+    }
+    const body = { title, weekdays, meeting_time: `${String(Number(hour)%12+(ampm==="PM"?12:0)).padStart(2,"0")}:${String(minute).padStart(2,"0")}`,
+      month_weeks, lead_minutes: Number(find(".meeting-lead").value), enabled: find(".meeting-enabled").checked, updated_at: new Date().toISOString() };
+    const buttons = [...card.querySelectorAll("button")];
+    const fields = [...card.querySelectorAll("input,select")];
+    [...buttons,...fields].forEach(el => { el.disabled = true; });
+    try {
+      const query = id ? sb.from("meeting_reminders").update(body).eq("id", id) : sb.from("meeting_reminders").insert(body);
+      const {data,error} = await query.select("id").single();
+      if (error) throw error;
+      id = data.id;
+      card.dataset.dirty = "false";
+      find(".meeting-status").textContent = "已儲存";
+    } catch (error) { find(".meeting-status").textContent = `儲存失敗：${error.message || "請稍後再試"}`; }
+    finally { [...buttons,...fields].forEach(el => { el.disabled = false; }); }
+  });
+  find(".meeting-delete").addEventListener("click", async () => {
+    if (!confirm("這會直接從資料庫刪除，電腦與手機兩邊都會消失，無法復原。")) return;
+    const buttons = [...card.querySelectorAll("button")];
+    buttons.forEach(el => { el.disabled = true; });
+    try {
+      if (id) { const {error} = await sb.from("meeting_reminders").delete().eq("id", id); if(error) throw error; }
+      card.remove();
+    } catch(error) { find(".meeting-status").textContent = `刪除失敗：${error.message || "請稍後再試"}`; }
+    finally { buttons.forEach(el => { el.disabled = false; }); }
+  });
+  list.append(card);
+  return card;
+}
+
+async function loadMeetings() {
+  if (meetingsLoading || meetingEditing()) return;
+  meetingsLoading = true;
+  const list = document.getElementById("meetingsList");
+  try {
+    const {data,error} = await sb.from("meeting_reminders").select("*").order("created_at");
+    if (error) throw error;
+    if (meetingEditing()) return;
+    list.replaceChildren();
+    (data || []).forEach(addMeetingCard);
+    if (!data?.length) list.innerHTML = '<div class="empty">尚無會議</div>';
+  } catch(error) {
+    if (!meetingEditing()) list.innerHTML = `<div class="empty">開會提醒讀取失敗：${escapeHtml(error.message || "請稍後再試")}</div>`;
+  } finally { meetingsLoading = false; }
+}
+document.getElementById("addMeetingBtn").addEventListener("click", () => { addMeetingCard().querySelector("input").focus(); });
+document.getElementById("todoLeadMinutes").addEventListener("change", async (e) => {
+  const select = e.target;
+  todoLeadSaving = true; select.disabled = true;
+  try {
+    const {error} = await sb.from("secretary_settings").update({todo_lead_minutes:Number(select.value),updated_at:new Date().toISOString()}).eq("id",1);
+    if(error) throw error;
+    document.getElementById("todoLeadStatus").textContent = "已儲存";
+  } catch(error) { document.getElementById("todoLeadStatus").textContent = `儲存失敗：${error.message || "請稍後再試"}`; }
+  finally { todoLeadSaving = false; select.disabled = false; }
+});
 
 function clearSummaryResult() {
   renderSummaryResult("");
@@ -1014,6 +1148,7 @@ function switchTab(name) {
   document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add("active");
   if (name !== "notes") showNotesList();
   loaders[name]();
+  if (name === "settings") loadMeetings();
 }
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -1037,6 +1172,7 @@ function refreshAll() {
 
 // ── Init ────────────────────────────────────────────────────
 switchTab("briefing");
+loadMeetings();
 refreshAll();
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
 
