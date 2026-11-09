@@ -5,7 +5,6 @@ import android.content.*;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.os.*;
-import android.provider.Settings;
 import android.speech.tts.*;
 import android.util.Log;
 import org.json.JSONArray;
@@ -15,11 +14,24 @@ import java.util.concurrent.*;
 public class ReminderService extends Service {
     public static final String CHANNEL="meeting_reminders";
     public static final int ALERT_NOTIFICATION=76, SERVICE_NOTIFICATION=77;
+    private static final Handler MAIN=new Handler(Looper.getMainLooper());
+    private static volatile ReminderService instance;
+    private static boolean starting;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private SpeechSession speech;
-    private boolean running;
-    private PowerManager.WakeLock wakeLock;
+    private boolean running,polling,syncAgain,registered;
+    private final Runnable poll=()->pollNow();
+    private final BroadcastReceiver screenReceiver=new BroadcastReceiver(){
+        @Override public void onReceive(Context c,Intent intent){
+            handler.removeCallbacks(poll);
+            updateAlerts();
+            if(!Intent.ACTION_SCREEN_OFF.equals(intent.getAction()))pollNow(true);
+        }
+    };
+    public static boolean isRunning(){return instance!=null&&instance.running;}
+    public static boolean isLocked(Context c){return c.getSystemService(KeyguardManager.class).isKeyguardLocked();}
+    public static boolean isScreenOn(Context c){return c.getSystemService(PowerManager.class).isInteractive();}
     public static void channel(Context c){
         NotificationChannel channel=new NotificationChannel(CHANNEL,"開會與待辦提醒",NotificationManager.IMPORTANCE_HIGH);
         channel.setSound(null,null);channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
@@ -38,52 +50,137 @@ public class ReminderService extends Service {
         if(full)b.setFullScreenIntent(alertIntent(c),true);
         return b.build();
     }
-    public static void showAlerts(Context c,boolean open){
+    private static void lockedNotification(Context c){
         channel(c);NotificationManager manager=c.getSystemService(NotificationManager.class);
-        JSONArray rows=new ReminderStore(c).alerts();
-        if(rows.length()==0){manager.cancel(ALERT_NOTIFICATION);return;}
-        try{manager.notify(ALERT_NOTIFICATION,notification(c,"未確認 "+rows.length()+" 筆",true));}
+        int count=new ReminderStore(c).alerts().length();
+        if(count==0||!isLocked(c)){manager.cancel(ALERT_NOTIFICATION);return;}
+        try{manager.notify(ALERT_NOTIFICATION,notification(c,"未確認 "+count+" 筆",true));}
         catch(SecurityException e){Log.e("Reminder","請啟用通知權限",e);}
-        if(open&&Settings.canDrawOverlays(c))try{
-            c.startActivity(new Intent(c,ReminderActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP));
-        }catch(Exception e){Log.e("Reminder","提醒畫面開啟失敗",e);}
+    }
+    public static void showAlerts(Context context,boolean open){
+        Context c=context.getApplicationContext();
+        MAIN.post(()->{
+            if(isRunning()){instance.updateAlerts();return;}
+            if(new ReminderStore(c).alerts().length()==0){stop(c);return;}
+            if(isLocked(c)){ReminderOverlay.hide(c);lockedNotification(c);return;}
+            c.getSystemService(NotificationManager.class).cancel(ALERT_NOTIFICATION);
+            if(open)ensureStarted(c);
+            else if(isScreenOn(c))ReminderOverlay.show(c);
+        });
+    }
+    /** 同步完成後的入口；所有視窗及服務啟動都留在主執行緒。 */
+    public static void afterSync(Context context){Context c=context.getApplicationContext();MAIN.post(()->{
+        if(isRunning())instance.updateAlerts();else ensureStarted(c);
+    });}
+    private static void ensureStarted(Context c){
+        if(new ReminderStore(c).alerts().length()==0){stop(c);return;}
+        if(isRunning()||starting)return;
+        if(isLocked(c)){ReminderOverlay.hide(c);lockedNotification(c);return;}
+        if(!isScreenOn(c))return;
+        Runnable launch=()->{
+            if(isRunning()||starting||isLocked(c)||!isScreenOn(c)||new ReminderStore(c).alerts().length()==0)return;
+            if(!ReminderActivity.isVisible()&&!ReminderOverlay.isShowing())return;
+            starting=true;
+            try{c.startForegroundService(new Intent(c,ReminderService.class));MAIN.postDelayed(()->starting=false,10000);}
+            catch(Exception e){starting=false;Log.e("Reminder","提醒前景服務啟動失敗",e);}
+        };
+        if(ReminderActivity.isVisible())launch.run();
+        else{ReminderOverlay.show(c);ReminderOverlay.whenVisible(launch);}
+    }
+    public static void syncNow(Context context){Context c=context.getApplicationContext();MAIN.post(()->{
+        if(isRunning())instance.pollNow();else ReminderSyncJob.request(c);
+    });}
+    public static void stop(Context context){Context c=context.getApplicationContext();MAIN.post(()->{
+        if(new ReminderStore(c).alerts().length()!=0)return;
+        if(isRunning()){instance.updateAlerts();return;}
+        ReminderScheduler.schedule(c);ReminderOverlay.hide(c);
+        NotificationManager nm=c.getSystemService(NotificationManager.class);nm.cancel(ALERT_NOTIFICATION);nm.cancel(SERVICE_NOTIFICATION);
+        c.stopService(new Intent(c,ReminderService.class));
+    });}
+    @Override public void onCreate(){
+        super.onCreate();instance=this;starting=false;
+        IntentFilter filter=new IntentFilter();filter.addAction(Intent.ACTION_SCREEN_ON);filter.addAction(Intent.ACTION_SCREEN_OFF);filter.addAction(Intent.ACTION_USER_PRESENT);
+        if(Build.VERSION.SDK_INT>=33)registerReceiver(screenReceiver,filter,Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(screenReceiver,filter);
+        registered=true;
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
-        channel(this);Notification n=notification(this,"正在檢查提醒事項",false);
-        if(Build.VERSION.SDK_INT>=34)startForeground(SERVICE_NOTIFICATION,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);
-        else startForeground(SERVICE_NOTIFICATION,n);
-        if(running){
-            worker.submit(()->{
-                List<ReminderSyncJob.Speech> lines=ReminderSyncJob.processLocal(this);
-                showAlerts(this,true);ReminderScheduler.schedule(this);
-                handler.post(()->{if(running&&speech!=null)speech.add(lines);});
-            });
-            return START_NOT_STICKY;
-        }
+        channel(this);
+        try{
+            Notification n=notification(this,"提醒中：未確認 "+new ReminderStore(this).alerts().length()+" 筆",false);
+            if(Build.VERSION.SDK_INT>=34)startForeground(SERVICE_NOTIFICATION,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            else startForeground(SERVICE_NOTIFICATION,n);
+        }catch(Exception e){Log.e("Reminder","提醒前景服務建立失敗",e);finish();return START_NOT_STICKY;}
         running=true;
-        wakeLock=getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"secretarytool:reminder");
-        wakeLock.acquire(150000L);
-        handler.postDelayed(this::finish,145000L);
         worker.submit(()->{
             try{
                 List<ReminderSyncJob.Speech> lines=ReminderSyncJob.processLocal(this);
-                showAlerts(this,true);
                 ReminderScheduler.schedule(this);
-                // 語音先依快取播放，不讓離線連線逾時拖延鬧鐘。
-                handler.post(()->speech=play(this,lines,this::finish));
+                handler.post(()->{
+                    if(!running)return;
+                    speak(lines);updateAlerts();pollNow();
+                });
                 ReminderSyncJob.request(this);
-            }catch(Exception e){Log.e("Reminder","提醒服務處理失敗",e);handler.post(this::finish);}
+            }catch(Exception e){Log.e("Reminder","提醒服務處理失敗",e);handler.post(()->{updateAlerts();pollNow();});}
         });return START_NOT_STICKY;
     }
-    private void finish(){
-        if(!running)return;running=false;
-        if(speech!=null)speech.close();handler.removeCallbacksAndMessages(null);
-        ReminderScheduler.schedule(this);stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
+    private void speak(List<ReminderSyncJob.Speech> lines){
+        if(lines.isEmpty())return;
+        if(speech!=null)speech.add(lines);
+        else speech=play(this,lines,()->{speech=null;updateAlerts();});
     }
-    @Override public void onTimeout(int startId){finish();}
-    @Override public void onTimeout(int startId,int fgsType){finish();}
-    @Override public void onDestroy(){running=false;handler.removeCallbacksAndMessages(null);if(speech!=null)speech.close();
-        if(wakeLock!=null&&wakeLock.isHeld())wakeLock.release();worker.shutdownNow();super.onDestroy();}
+    private void updateAlerts(){
+        if(!running)return;
+        int count=new ReminderStore(this).alerts().length();
+        if(count==0){
+            if(speech==null){finish();return;}
+            ReminderOverlay.hide(this);
+            getSystemService(NotificationManager.class).cancel(ALERT_NOTIFICATION);
+            handler.removeCallbacks(poll);
+            return;
+        }
+        getSystemService(NotificationManager.class).notify(SERVICE_NOTIFICATION,notification(this,"提醒中：未確認 "+count+" 筆",false));
+        if(isLocked(this)){ReminderOverlay.hide(this);lockedNotification(this);}
+        else{
+            getSystemService(NotificationManager.class).cancel(ALERT_NOTIFICATION);
+            if(isScreenOn(this)&&!ReminderActivity.isVisible())ReminderOverlay.refresh(this);else ReminderOverlay.hide(this);
+        }
+        if(!isScreenOn(this)||isLocked(this))handler.removeCallbacks(poll);
+    }
+    private void pollNow(){pollNow(false);}
+    private void pollNow(boolean screenEvent){
+        handler.removeCallbacks(poll);
+        if(!running||!isScreenOn(this)||(!screenEvent&&isLocked(this)))return;
+        if(polling){syncAgain=true;return;}
+        polling=true;
+        worker.submit(()->{
+            try{ReminderSyncJob.sync(this);List<ReminderSyncJob.Speech> lines=ReminderSyncJob.processLocal(this);
+                handler.post(()->{if(running)speak(lines);});}
+            catch(Exception e){Log.e("Reminder","提醒持續同步失敗",e);}
+            finally{handler.post(()->{
+                polling=false;if(!running)return;updateAlerts();
+                if(running&&isScreenOn(this)&&!isLocked(this)){handler.removeCallbacks(poll);handler.postDelayed(poll,syncAgain?0:5000);}
+                syncAgain=false;
+            });}
+        });
+    }
+    private void finish(){
+        running=false;handler.removeCallbacksAndMessages(null);
+        if(speech!=null){speech.close();speech=null;}
+        ReminderScheduler.schedule(this);ReminderOverlay.hide(this);
+        getSystemService(NotificationManager.class).cancel(ALERT_NOTIFICATION);
+        stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
+    }
+    @Override public void onDestroy(){
+        running=false;handler.removeCallbacksAndMessages(null);
+        if(speech!=null)speech.close();
+        if(registered){unregisterReceiver(screenReceiver);registered=false;}
+        ReminderScheduler.schedule(this);ReminderOverlay.hide(this);
+        getSystemService(NotificationManager.class).cancel(ALERT_NOTIFICATION);
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        if(instance==this)instance=null;
+        worker.shutdownNow();super.onDestroy();
+    }
     @Override public IBinder onBind(Intent intent){return null;}
 
     public static SpeechSession play(Context c,List<ReminderSyncJob.Speech> lines,Runnable done){
@@ -96,9 +193,12 @@ public class ReminderService extends Service {
         private final Handler main=new Handler(Looper.getMainLooper());
         private TextToSpeech tts;private final Map<String,ReminderSyncJob.Speech> pending=new HashMap<>();
         private boolean closed,ready;
+        private PowerManager.WakeLock wakeLock;
         SpeechSession(Context c,List<ReminderSyncJob.Speech> lines,Runnable done){context=c.getApplicationContext();store=new ReminderStore(c);this.lines=new ArrayList<>(lines);this.done=done;}
         void start(){
             if(lines.isEmpty()){main.post(this::complete);return;}
+            wakeLock=context.getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"secretarytool:reminder");
+            wakeLock.acquire(150000L);
             main.postDelayed(this::complete,130000L);
             tts=new TextToSpeech(context,status->{main.post(()->initialized(status));});
         }
@@ -129,6 +229,7 @@ public class ReminderService extends Service {
         private void finished(String id,boolean error){if(closed)return;if(error){store.unmarkSpoken(id);Log.e("Reminder","提醒語音播放失敗");}pending.remove(id);if(pending.isEmpty())complete();}
         private void complete(){if(closed)return;close();done.run();}
         public void close(){if(closed)return;closed=true;main.removeCallbacksAndMessages(null);
+            if(wakeLock!=null&&wakeLock.isHeld())wakeLock.release();
             for(String id:pending.keySet())store.unmarkSpoken(id);pending.clear();if(tts!=null){tts.stop();tts.shutdown();}}
     }
 }

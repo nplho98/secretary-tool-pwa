@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.*;
 import android.provider.Settings;
 import android.widget.*;
+import android.graphics.Color;
+import android.view.View;
 import android.util.Log;
 
 public class PermissionActivity extends Activity {
@@ -24,7 +26,7 @@ public class PermissionActivity extends Activity {
     @Override protected void onResume(){super.onResume();if(!missing(this)){backToMain();return;}render();}
     private void render(){
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(24,24,24,24);
-        TextView title=new TextView(this);title.setText("開會與待辦提醒設定");title.setTextSize(22);list.addView(title);
+        TextView title=new TextView(this);title.setText("開會與待辦提醒設定");title.setTextSize(22);title.setTextColor(Color.WHITE);title.setBackgroundColor(Color.rgb(163,20,77));title.setPadding(24,24,24,24);list.addView(title);
         TextView hint=new TextView(this);hint.setText("請逐項開啟，讓手機鎖定或使用其他應用程式時也能提醒。");list.addView(hint);
         NotificationManager nm=getSystemService(NotificationManager.class);
         button(list,"通知",nm.areNotificationsEnabled()&&(Build.VERSION.SDK_INT<33||checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED),()->{
@@ -37,7 +39,11 @@ public class PermissionActivity extends Activity {
         if(Build.VERSION.SDK_INT>=31)button(list,"精確鬧鐘",getSystemService(AlarmManager.class).canScheduleExactAlarms(),()->open(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getPackageName()))));
         button(list,"忽略電池最佳化",getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName()),()->open(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName()))));
         Button later=new Button(this);later.setText("稍後");later.setOnClickListener(v->{getSharedPreferences("reminders",MODE_PRIVATE).edit().putBoolean("permissions_later",true).apply();backToMain();});list.addView(later);
-        ScrollView scroll=new ScrollView(this);scroll.addView(list);setContentView(scroll);
+        list.setPadding(0,0,0,0);
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.addView(list);setContentView(scroll);
+        ReminderContent.applyInsets(scroll,title);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        if(Build.VERSION.SDK_INT>=30)getWindow().getInsetsController().setSystemBarsAppearance(0,android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
     }
     private void button(LinearLayout list,String label,boolean granted,Runnable action){Button b=new Button(this);b.setText(label+(granted?"（已完成）":"（開啟設定）"));b.setEnabled(!granted);b.setOnClickListener(v->action.run());list.addView(b);}
     private void open(Intent intent){try{startActivity(intent);}catch(Exception e){Log.e("Reminder","無法開啟權限設定",e);Toast.makeText(this,"無法開啟設定，請從系統設定手動開啟",Toast.LENGTH_LONG).show();}}

@@ -13,6 +13,8 @@ public final class ReminderStore {
     private JSONArray array(String key){try{return new JSONArray(prefs.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
     private JSONObject object(String key){try{return new JSONObject(prefs.getString(key,"{}"));}catch(Exception e){return new JSONObject();}}
     public void cache(JSONArray meetings,JSONArray todos,int lead){synchronized(LOCK){prefs.edit().putString("meetings",meetings.toString()).putString("todos",todos.toString()).putInt("lead",lead).commit();}}
+    public int meetingCount(){synchronized(LOCK){return array("meetings").length();}}
+    public int todoCount(){synchronized(LOCK){return array("todos").length();}}
     public List<ReminderLogic.Occurrence> occurrences(Instant now){
         synchronized(LOCK){
             List<ReminderLogic.Source> sources=new ArrayList<>();

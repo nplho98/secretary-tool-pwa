@@ -62,24 +62,25 @@ public class ReminderSyncJob extends JobService {
         }catch(Exception e){Log.e("Reminder","離線確認待重送",e);break;}
         try{store.merge(api.unacked());}catch(Exception e){Log.e("Reminder","未確認清單同步失敗",e);}
         ReminderScheduler.schedule(c);
+        Log.i("Reminder","sync 結束：會議數="+store.meetingCount()+"，待辦數="+store.todoCount());
+        ReminderService.afterSync(c);
     }}
     @Override public boolean onStartJob(JobParameters params){
-        final int id=params.getJobId();stopped.remove(id);
+        final int id=params.getJobId();stopped.remove(id);Log.i("Reminder","onStartJob id="+id);
         tasks.put(id,worker.submit(()->{
             try{
-                String before=new ReminderStore(this).alerts().toString();
                 sync(this);
                 if(stopped.contains(id))return;
                 List<Speech> lines=processLocal(this);
-                ReminderService.showAlerts(this,!before.equals(new ReminderStore(this).alerts().toString()));
                 getMainExecutorCompat(()->{
                     if(!stopped.contains(id))speeches.put(id,ReminderService.play(this,lines,()->{
-                        speeches.remove(id);tasks.remove(id);if(!stopped.contains(id))jobFinished(params,false);
+                        speeches.remove(id);tasks.remove(id);if(!stopped.contains(id))finishJob(params,false);
                     }));
                 });
-            }catch(Exception e){Log.e("Reminder","提醒同步作業失敗",e);tasks.remove(id);if(!stopped.contains(id))jobFinished(params,true);}
+            }catch(Exception e){Log.e("Reminder","提醒同步作業失敗",e);tasks.remove(id);if(!stopped.contains(id))finishJob(params,true);}
         }));return true;
     }
+    private void finishJob(JobParameters params,boolean retry){Log.i("Reminder","jobFinished id="+params.getJobId()+" retry="+retry);jobFinished(params,retry);}
     private void getMainExecutorCompat(Runnable run){new android.os.Handler(android.os.Looper.getMainLooper()).post(run);}
     @Override public boolean onStopJob(JobParameters params){int id=params.getJobId();stopped.add(id);
         Future<?> task=tasks.remove(id);if(task!=null)task.cancel(true);

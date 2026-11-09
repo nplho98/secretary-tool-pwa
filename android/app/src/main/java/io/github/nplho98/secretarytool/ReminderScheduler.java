@@ -18,6 +18,7 @@ public final class ReminderScheduler {
             Instant next=ReminderLogic.nextEvent(new ReminderStore(c).occurrences(now),now,ZoneId.systemDefault());
             PendingIntent show=PendingIntent.getActivity(c,72,new Intent(c,LauncherActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
             alarm.setAlarmClock(new AlarmManager.AlarmClockInfo(next.toEpochMilli(),show),event);
+            Log.i("Reminder","鬧鐘排定時間="+next.atZone(ZoneId.systemDefault()));
         }catch(Exception e){Log.e("Reminder","精確提醒排程失敗",e);}
     }
 }
