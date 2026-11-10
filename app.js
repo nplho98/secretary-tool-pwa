@@ -14,6 +14,106 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function getWeekMeetingOccurrences(meetings, now) {
+  const occurrences = [];
+  const daysToSunday = (7 - now.getDay()) % 7;
+  for (let offset = 0; offset <= daysToSunday; offset++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const weekday = day.getDay() || 7;
+    const monthWeek = Math.floor((day.getDate() - 1) / 7) + 1;
+    const daysInMonth = new Date(day.getFullYear(), day.getMonth() + 1, 0).getDate();
+    for (const meeting of meetings) {
+      if (!meeting.enabled || !meeting.weekdays?.includes(weekday)) continue;
+      const monthWeeks = meeting.month_weeks || [];
+      if (monthWeeks.length && !monthWeeks.includes(monthWeek)
+          && !(monthWeeks.includes(-1) && day.getDate() + 7 > daysInMonth)) continue;
+      const time = /^(\d{2}):(\d{2})$/.exec(meeting.meeting_time || "");
+      if (!time) continue;
+      const hour = Number(time[1]);
+      const minute = Number(time[2]);
+      if (hour > 23 || minute > 59) continue;
+      const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute);
+      if (start <= now) continue;
+      occurrences.push({ title: meeting.title, start, today: offset === 0 });
+    }
+  }
+  return occurrences.sort((a, b) => a.start - b.start);
+}
+
+window.__weekMeetingsSelfTest = function () {
+  const assert = (condition, message) => {
+    if (!condition) throw new Error(message);
+  };
+  const meeting = (overrides = {}) => ({
+    title: "會議", weekdays: [1, 2, 3, 4, 5, 6, 7],
+    meeting_time: "15:00", month_weeks: [], enabled: true, ...overrides,
+  });
+  const first = meeting({ weekdays: [2], month_weeks: [1] });
+  assert(getWeekMeetingOccurrences([first], new Date(2026, 10, 3, 9)).length === 1,
+    "每月第 1 個星期二應列出");
+  assert(getWeekMeetingOccurrences([first], new Date(2026, 10, 10, 9)).length === 0,
+    "每月第 2 個星期二不應符合第 1 個");
+  const last = meeting({ weekdays: [1], month_weeks: [-1] });
+  assert(getWeekMeetingOccurrences([last], new Date(2026, 10, 23, 9)).length === 0,
+    "還有下個星期一時不應符合最後一個");
+  assert(getWeekMeetingOccurrences([last], new Date(2026, 10, 30, 9)).length === 1,
+    "每月最後一個星期一應列出");
+  assert(getWeekMeetingOccurrences([meeting({ weekdays: [2], month_weeks: [2, -1] })],
+    new Date(2026, 10, 10, 9)).length === 1, "第幾個與最後一個應採任一符合");
+  const now = new Date(2026, 10, 10, 15);
+  const input = [
+    meeting({ title: "週日", weekdays: [7], meeting_time: "23:59" }),
+    meeting({ title: "明天", weekdays: [3] }),
+    meeting({ title: "稍後", weekdays: [2], meeting_time: "15:01" }),
+    meeting({ title: "較晚", weekdays: [2], meeting_time: "16:00" }),
+    meeting({ weekdays: [2], meeting_time: "14:59" }),
+    meeting({ weekdays: [2], meeting_time: "15:00" }),
+    meeting({ enabled: false }),
+    meeting({ weekdays: [1] }),
+  ];
+  const before = JSON.stringify(input);
+  const rows = getWeekMeetingOccurrences(input, now);
+  assert(rows.map((row) => row.title).join(",") === "稍後,較晚,明天,週日",
+    "應排除已過、剛開始、停用與下週一，並依日期時間排序");
+  assert(rows[0].today && rows[1].today && !rows[2].today,
+    "只有今天的場次應標記為今天");
+  assert(rows[3].start.getDate() === 15, "範圍應包含本週日 23:59");
+  assert(getWeekMeetingOccurrences([meeting()], new Date(2026, 10, 15, 16)).length === 0,
+    "週日已過時間不應列出下週場次");
+  const acrossMonth = getWeekMeetingOccurrences([meeting({ weekdays: [2], month_weeks: [1] })],
+    new Date(2026, 10, 30, 9));
+  assert(acrossMonth.length === 1 && acrossMonth[0].start.getMonth() === 11
+    && acrossMonth[0].start.getDate() === 1, "跨月應按場次月份判斷第幾個");
+  assert(JSON.stringify(input) === before && now.getTime() === new Date(2026, 10, 10, 15).getTime(),
+    "純函式不得改動輸入");
+  return true;
+};
+
+async function loadWeekMeetings() {
+  const el = document.getElementById("weekMeetings");
+  const render = (now, content) => {
+    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - now.getDay()) % 7);
+    const monthDay = (day) => `${day.getMonth() + 1}/${day.getDate()}`;
+    el.innerHTML = `<div class="card"><div class="content">
+      <div class="title">本週會議　${monthDay(now)}～${monthDay(sunday)}</div>
+      ${content}
+    </div></div>`;
+  };
+  try {
+    const { data, error } = await sb.from("meeting_reminders").select("*");
+    if (error) throw error;
+    const now = new Date();
+    const rows = getWeekMeetingOccurrences(data || [], now);
+    const weekdays = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+    render(now, rows.length ? rows.map(({ title, start, today }) => {
+      const time = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+      return `<div class="note-detail-content${today ? " week-meeting-today" : ""}">${weekdays[start.getDay()]} ${start.getMonth() + 1}/${start.getDate()}　${time}　${escapeHtml(title)}</div>`;
+    }).join("") : "<div>本週沒有會議</div>");
+  } catch (error) {
+    render(new Date(), `<div>會議讀取失敗：${escapeHtml(error?.message || String(error))}</div>`);
+  }
+}
+
 // ── 每日早報 (daily_briefing) ────────────────────────────────
 async function loadBriefing() {
   const el = document.getElementById("briefingCard");
@@ -1133,7 +1233,7 @@ document.getElementById("instantBriefingBtn").addEventListener("click", async (e
 
 // ── Tabs ────────────────────────────────────────────────────
 const loaders = {
-  briefing: loadBriefing,
+  briefing: () => Promise.all([loadBriefing(), loadWeekMeetings()]),
   todos: loadTodos,
   notes: () => { loadCategories().then(loadNotes); },
   terminal: loadSummary,

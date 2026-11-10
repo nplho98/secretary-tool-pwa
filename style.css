@@ -12,6 +12,8 @@
 }
 
 .tab h2.reminder-heading { margin-top: 24px; }
+#weekMeetings { margin-bottom: 10px; }
+.week-meeting-today { color: var(--danger); font-weight: 700; }
 .meeting-card { min-width: 0; }
 .meeting-card label { display: block; margin-top: 10px; }
 .meeting-card .meeting-weekdays { display: flex; flex-wrap: wrap; gap: 8px 12px; }
