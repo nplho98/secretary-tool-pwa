@@ -13,7 +13,13 @@
 
 .tab h2.reminder-heading { margin-top: 24px; }
 #weekMeetings { margin-bottom: 10px; }
+.week-meetings-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 1em; text-align: left; font-variant-numeric: tabular-nums; }
+.week-meeting-cell { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.week-meeting-date, .week-meeting-time { white-space: nowrap; }
+.week-meeting-message { grid-column: 1 / -1; }
 .week-meeting-today { color: var(--danger); font-weight: 700; }
+.briefing-line { white-space: pre-wrap; min-height: 1lh; }
+.briefing-bullet { padding-left: 1em; text-indent: -1em; }
 .meeting-card { min-width: 0; }
 .meeting-card label { display: block; margin-top: 10px; }
 .meeting-card .meeting-weekdays { display: flex; flex-wrap: wrap; gap: 8px 12px; }

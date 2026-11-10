@@ -91,12 +91,10 @@ window.__weekMeetingsSelfTest = function () {
 
 async function loadWeekMeetings() {
   const el = document.getElementById("weekMeetings");
-  const render = (now, content) => {
-    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - now.getDay()) % 7);
-    const monthDay = (day) => `${day.getMonth() + 1}/${day.getDate()}`;
+  const render = (content) => {
     el.innerHTML = `<div class="card"><div class="content">
-      <div class="title">本週會議　${monthDay(now)}～${monthDay(sunday)}</div>
-      ${content}
+      <div class="title">本週會議</div>
+      <div class="week-meetings-grid">${content}</div>
     </div></div>`;
   };
   try {
@@ -105,12 +103,15 @@ async function loadWeekMeetings() {
     const now = new Date();
     const rows = getWeekMeetingOccurrences(data || [], now);
     const weekdays = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-    render(now, rows.length ? rows.map(({ title, start, today }) => {
+    render(rows.length ? rows.map(({ title, start, today }) => {
       const time = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
-      return `<div class="note-detail-content${today ? " week-meeting-today" : ""}">${weekdays[start.getDay()]} ${start.getMonth() + 1}/${start.getDate()}　${time}　${escapeHtml(title)}</div>`;
-    }).join("") : "<div>本週沒有會議</div>");
+      const cellClass = `week-meeting-cell${today ? " week-meeting-today" : ""}`;
+      return `<div class="${cellClass} week-meeting-date">${weekdays[start.getDay()]} ${start.getMonth() + 1}/${start.getDate()}</div>
+        <div class="${cellClass} week-meeting-time">${time}</div>
+        <div class="${cellClass}">${escapeHtml(title)}</div>`;
+    }).join("") : '<div class="week-meeting-message">本週沒有會議</div>');
   } catch (error) {
-    render(new Date(), `<div>會議讀取失敗：${escapeHtml(error?.message || String(error))}</div>`);
+    render(`<div class="week-meeting-message">會議讀取失敗：${escapeHtml(error?.message || String(error))}</div>`);
   }
 }
 
@@ -136,7 +137,9 @@ async function loadBriefing() {
   el.innerHTML = `
     <div class="card">
       <div class="content">
-        <div class="title" style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>
+        <div class="title">${data.content.split(/\r\n|\n|\r/).map((line) =>
+          `<div class="briefing-line${line.startsWith("・") ? " briefing-bullet" : ""}">${escapeHtml(line)}</div>`
+        ).join("")}</div>
         <div class="meta">更新時間：${fmtTime(data.updated_at)}</div>
       </div>
     </div>
